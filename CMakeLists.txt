@@ -1,7 +1,7 @@
 cmake_minimum_required(VERSION 2.6)
 project(chainmcmc)
 
-SET (CMAKE_CXX_FLAGS "-O3 -std=c++11 -Wall")
+SET (CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -O3 -std=c++11 -Wall")
 #SET (CMAKE_CXX_FLAGS "-g -std=c++11 -Wall")
 #SET (CMAKE_CXX_FLAGS "-O2 -pipe -ffast-math -fomit-frame-pointer -Wfatal-errors -std=gnu++0x")
 
