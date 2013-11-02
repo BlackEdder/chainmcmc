@@ -307,81 +307,62 @@ void ChainController::step() {
 		double weight1, weight2;
 		double temp1, temp2;
 
-		int wait_count = 10;
 		size_t done = 0;
-		bool out_of_time = false;
-		while (done<2 && !out_of_time) {
-			send( chains[ids[0]], atom("log_weight") );
-			receive( 
-				on(arg_match) >> [&weight1,&done]( const double &ans ) {
-					weight1 = ans;
-					++done;
-				},
-				after(std::chrono::seconds(1)) >> []() {}
-			);
-			send( chains[ids[1]], atom("log_weight") );
-			receive( 
-				on(arg_match) >> [&weight2, &done]( const double &ans ) {
-					weight2 = ans;
-					++done;
-				},
-				after(std::chrono::seconds(0)) >> []() {}
-			);
-			// After one chain is done, we only want too wait three times as long
-			// for the other chain. Solves problems with likelihood functions that get stuck.
-			if (done == 0)
-				wait_count += 10;
-			else
-				--wait_count;
-			if ( wait_count < -1 )
-				out_of_time = true;
-		}
+		send( chains[ids[0]], atom("log_weight") );
+		receive( 
+			on(arg_match) >> [&weight1,&done]( const double &ans ) {
+				weight1 = ans;
+				++done;
+			}
+		);
+		send( chains[ids[1]], atom("log_weight") );
+		receive( 
+			on(arg_match) >> [&weight2, &done]( const double &ans ) {
+				weight2 = ans;
+				++done;
+			}
+		);
 
-		//if (!out_of_time) {
-			send( chains[ids[0]], atom("temp") );
-			receive( 
-				on(arg_match) >> [&temp1]( const double &ans ) {
-					temp1 = ans;
-				}
-			);
-			send( chains[ids[1]], atom("temp") );
-			receive( 
-				on(arg_match) >> [&temp2]( const double &ans ) {
-					temp2 = ans;
-				}
-			);
-			// Try swap
-			double log_ratio = weight2/temp1+weight1/temp2 -
-					weight1/temp1 - weight2/temp2;
-			bool accept = false;
-			if (std::isfinite(log_ratio)) { // Only consider switching when ratio is a finite number
-				if (log_ratio > 0)
+		send( chains[ids[0]], atom("temp") );
+		receive( 
+			on(arg_match) >> [&temp1]( const double &ans ) {
+				temp1 = ans;
+			}
+		);
+		send( chains[ids[1]], atom("temp") );
+		receive( 
+			on(arg_match) >> [&temp2]( const double &ans ) {
+				temp2 = ans;
+			}
+		);
+		// Try swap
+		double log_ratio = weight2/temp1+weight1/temp2 -
+				weight1/temp1 - weight2/temp2;
+		bool accept = false;
+		if (std::isfinite(log_ratio)) { // Only consider switching when ratio is a finite number
+			if (log_ratio > 0)
+				accept = true;
+			else {
+				std::uniform_real_distribution<double> unif(0,1);
+				if (log(unif(engine))<log_ratio)
 					accept = true;
-				else {
-					std::uniform_real_distribution<double> unif(0,1);
-					if (log(unif(engine))<log_ratio)
-						accept = true;
-				}
 			}
-			++no_tries;
-			if (accept) {
-				++no_accepts;
-				if (no_tries>10) {
-					double alpha = ((double) no_accepts)/no_tries;
-					if (alpha < 0.2)
-						dt *= 1.05;
-					if (alpha > 0.6)
-						dt /= 1.05;
-					if (dt == 0)
-						dt = 0.01;
-				}
-				send( chains[ids[0]], atom("temp"), (1+dt*ids[1]) );
-				send( chains[ids[1]], atom("temp"), (1+dt*ids[0]) );
+		}
+		++no_tries;
+		if (accept) {
+			++no_accepts;
+			if (no_tries>10) {
+				double alpha = ((double) no_accepts)/no_tries;
+				if (alpha < 0.2)
+					dt *= 1.05;
+				if (alpha > 0.6)
+					dt /= 1.05;
+				if (dt == 0)
+					dt = 0.01;
 			}
-		/*} else
-			std::cerr << "Stopped waiting for chain, which is taking too long to reply. Might be stuck." 
-				<< std::endl;*/
-
+			send( chains[ids[0]], atom("temp"), (1+dt*ids[1]) );
+			send( chains[ids[1]], atom("temp"), (1+dt*ids[0]) );
+		}
 		send( chains[ids[1]], atom("run"), 100, log_on );
 	}
 	send( chains[ids[0]], atom("run"), 100, log_on );
