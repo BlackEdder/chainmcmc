@@ -19,6 +19,21 @@ target_link_libraries( chainmcmc ${CPPA})
 
 SET (CMAKE_RUNTIME_OUTPUT_DIRECTORY bin)
 
+#Install the library
+SET (CMAKE_INSTALL_PREFIX /usr)
+install (TARGETS chainmcmc DESTINATION lib)
+install (FILES include/chainmcmc/chainmcmc.hh
+	include/chainmcmc/chain.hh
+	include/chainmcmc/file.hh
+	include/chainmcmc/trace.hh
+ 	DESTINATION include/chainmcmc)
+
+#Documentation
+set(DOXYFILE_OUTPUT_DIR "${CMAKE_CURRENT_BINARY_DIR}/api-doc/chainmcmc")
+set(CMAKE_MODULE_PATH ${CMAKE_CURRENT_SOURCE_DIR})
+include(UseDoxygen)
+
+#Test
 find_package(CxxTest)
 if(CXXTEST_FOUND)
 	enable_testing()
