@@ -1,0 +1,105 @@
+/*
+  -------------------------------------------------------------------
+  
+  Copyright (C) 2013, Edwin van Leeuwen
+  
+  This file is part of chainmcmc.
+  
+  chainmcmc is free software; you can redistribute it and/or modify
+  it under the terms of the GNU General Public License as published by
+  the Free Software Foundation; either version 3 of the License, or
+  (at your option) any later version.
+  
+  Chainmcmc is distributed in the hope that it will be useful,
+  but WITHOUT ANY WARRANTY; without even the implied warranty of
+  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+  GNU General Public License for more details.
+  
+  You should have received a copy of the GNU General Public License
+  along with Gillespie. If not, see <http://www.gnu.org/licenses/>.
+
+  -------------------------------------------------------------------
+*/
+#include<fstream>
+
+#include <boost/algorithm/string.hpp>
+
+#include "chainmcmc/trace.hh"
+#include "chainmcmc/chain.hh"
+#include "chainmcmc/file.hh"
+namespace chainmcmc {
+	namespace trace {
+
+	std::vector<parameter_t> sample_from_string( const std::string & line ) {
+		std::vector<std::string> strs;
+		boost::split( strs, line, boost::is_any_of( "\t" ) );
+
+		std::vector<parameter_t> pars;
+		for ( auto & str : strs )
+			pars.push_back( boost::lexical_cast<double>( str ) );
+		return pars;
+	}
+
+
+	std::vector<std::vector<parameter_t> > read_trace_per_sample( 
+			std::ifstream& infile, const size_t tail ) {
+		if (tail != 0) {
+			file_helpers::move_last_lines( infile, tail );
+		}
+		return follow_trace_per_sample( infile );
+	}
+
+	std::vector<std::vector<double> > read_trace( 
+			const std::string & fname ) {
+		std::vector<std::vector<double> > trace;
+		std::ifstream infile;
+		infile.open( fname );
+		auto totranspose = read_trace_per_sample( infile, 0 );
+		// Now transpose
+		for ( auto & sample : totranspose ) {
+			for ( size_t i = 0; i < sample.size(); ++i ) {
+				if (trace.size()<i)
+					trace.push_back( std::vector<double>() );
+				trace[i].push_back( sample[i] );
+			}
+		}
+		return trace;
+	}
+
+
+	std::vector<std::vector<parameter_t> > follow_trace_per_sample(
+		std::ifstream& infile ) {
+		std::vector<std::vector<parameter_t> > samples;
+		auto lines = file_helpers::get_lines_and_move( infile );
+		for ( auto & line : lines ) {
+			samples.push_back( sample_from_string( line ) );
+		}
+		return samples;
+	}
+
+	std::vector<std::vector<parameter_t> > random_samples_from_file( 
+			const size_t &no, const std::string & filename, const size_t tail ) {
+		std::vector<std::vector<parameter_t> > rnd_samples;
+		auto tr = read_trace( filename );
+		std::vector<size_t> ids;
+		size_t j = 0;
+		if (!(tail == 0 || tail >= tr[0].size()))
+			j = tr[0].size() - tail;
+
+		for (; j < tr[0].size(); ++j)
+			ids.push_back(j);
+
+		std::mt19937 eng;
+
+		chainmcmc::fisherYatesKSubsets( ids, no, eng );
+
+		for (size_t i = 0; i < no; ++i) {
+			rnd_samples.push_back( std::vector<parameter_t>() );
+			for ( auto & par_v : tr ) {
+				rnd_samples[i].push_back( par_v[ids[i]] );
+			}
+		}
+		return rnd_samples;
+	}
+	};
+};

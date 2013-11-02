@@ -1,0 +1,32 @@
+cmake_minimum_required(VERSION 2.6)
+project(chainmcmc)
+
+SET (CMAKE_CXX_FLAGS "-O3 -std=c++11 -Wall")
+#SET (CMAKE_CXX_FLAGS "-g -std=c++11 -Wall")
+#SET (CMAKE_CXX_FLAGS "-O2 -pipe -ffast-math -fomit-frame-pointer -Wfatal-errors -std=gnu++0x")
+
+#link_directories( "/usr/lib/R/lib" )
+find_library( CPPA cppa )
+if (NOT CPPA)
+	message( FATAL_ERROR "libcppa not found" )
+	endif()
+
+include_directories("include")
+
+SET (CMAKE_LIBRARY_OUTPUT_DIRECTORY lib)
+add_library( chainmcmc SHARED src/chainmcmc/chain.cc;src/chainmcmc/trace.cc;src/chainmcmc/file.cc)
+target_link_libraries( chainmcmc ${CPPA})
+
+SET (CMAKE_RUNTIME_OUTPUT_DIRECTORY bin)
+
+find_package(CxxTest)
+if(CXXTEST_FOUND)
+	enable_testing()
+	FILE(GLOB testsRaw RELATIVE ${CMAKE_HOME_DIRECTORY} tests/test_*.h)
+	FOREACH(test ${testsRaw})
+		get_filename_component( ftest ${test} NAME_WE )
+		CXXTEST_ADD_TEST(${ftest} ${ftest}.cc ${test})
+		target_link_libraries(${ftest} chainmcmc)
+	ENDFOREACH()
+endif()
+
