@@ -23,6 +23,6 @@
 
 #ifndef MCMC_HH
 #define MCMC_HH
-#include "mcmc/trace.hh"
-#include "mcmc/chain.hh"
+#include "chainmcmc/trace.hh"
+#include "chainmcmc/chain.hh"
 #endif
