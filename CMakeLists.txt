@@ -34,6 +34,7 @@ set(CMAKE_MODULE_PATH ${CMAKE_CURRENT_SOURCE_DIR})
 include(UseDoxygen)
 
 #Test
+if (CMAKE_BUILD_TYPE MATCHES Debug)
 find_package(CxxTest)
 if(CXXTEST_FOUND)
 	enable_testing()
@@ -43,5 +44,6 @@ if(CXXTEST_FOUND)
 		CXXTEST_ADD_TEST(${ftest} ${ftest}.cc ${test})
 		target_link_libraries(${ftest} chainmcmc)
 	ENDFOREACH()
+endif()
 endif()
 
