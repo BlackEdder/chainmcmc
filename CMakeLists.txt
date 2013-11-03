@@ -18,6 +18,18 @@ add_library( chainmcmc SHARED src/chainmcmc/chain.cc;src/chainmcmc/trace.cc;src/
 target_link_libraries( chainmcmc ${CPPA})
 
 SET (CMAKE_RUNTIME_OUTPUT_DIRECTORY bin)
+FILE(GLOB examplesRaw RELATIVE ${CMAKE_HOME_DIRECTORY} examples/*.cc)
+FOREACH(example ${examplesRaw})
+	get_filename_component( ex ${example} NAME_WE )
+	add_executable(${ex} EXCLUDE_FROM_ALL ${example})
+ 	target_link_libraries(${ex} realtimeplot)
+ 	SET(examples ${examples};${ex})
+ENDFOREACH()
+
+add_custom_target( examples
+	DEPENDS ${examples}
+	)
+
 
 #Install the library
 SET (CMAKE_INSTALL_PREFIX /usr)
@@ -32,6 +44,7 @@ install (FILES include/chainmcmc/chainmcmc.hh
 set(DOXYFILE_OUTPUT_DIR "${CMAKE_CURRENT_BINARY_DIR}/api-doc/chainmcmc")
 set(CMAKE_MODULE_PATH ${CMAKE_CURRENT_SOURCE_DIR})
 include(UseDoxygen)
+
 
 #Test
 if (CMAKE_BUILD_TYPE MATCHES Debug)
