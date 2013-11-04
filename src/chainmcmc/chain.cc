@@ -295,19 +295,16 @@ void ChainController::step() {
 		double weight1, weight2;
 		double temp1, temp2;
 
-		size_t done = 0;
 		send( chains[ids[0]], atom("log_weight") );
 		receive( 
-			on(arg_match) >> [&weight1,&done]( const double &ans ) {
+			on(arg_match) >> [&weight1]( const double &ans ) {
 				weight1 = ans;
-				++done;
 			}
 		);
 		send( chains[ids[1]], atom("log_weight") );
 		receive( 
-			on(arg_match) >> [&weight2, &done]( const double &ans ) {
+			on(arg_match) >> [&weight2]( const double &ans ) {
 				weight2 = ans;
-				++done;
 			}
 		);
 
