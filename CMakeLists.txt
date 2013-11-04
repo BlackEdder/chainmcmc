@@ -1,7 +1,7 @@
 cmake_minimum_required(VERSION 2.6)
 project(chainmcmc)
 
-SET (CMAKE_CXX_FLAGS "-O3 -std=c++11 -Wall")
+SET (CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -O3 -std=c++11 -Wall")
 #SET (CMAKE_CXX_FLAGS "-g -std=c++11 -Wall")
 #SET (CMAKE_CXX_FLAGS "-O2 -pipe -ffast-math -fomit-frame-pointer -Wfatal-errors -std=gnu++0x")
 
@@ -18,6 +18,18 @@ add_library( chainmcmc SHARED src/chainmcmc/chain.cc;src/chainmcmc/trace.cc;src/
 target_link_libraries( chainmcmc ${CPPA})
 
 SET (CMAKE_RUNTIME_OUTPUT_DIRECTORY bin)
+FILE(GLOB examplesRaw RELATIVE ${CMAKE_HOME_DIRECTORY} examples/*.cc)
+FOREACH(example ${examplesRaw})
+	get_filename_component( ex ${example} NAME_WE )
+	add_executable(${ex} EXCLUDE_FROM_ALL ${example})
+ 	target_link_libraries(${ex} chainmcmc)
+ 	SET(examples ${examples};${ex})
+ENDFOREACH()
+
+add_custom_target( examples
+	DEPENDS ${examples}
+	)
+
 
 #Install the library
 SET (CMAKE_INSTALL_PREFIX /usr)
@@ -33,7 +45,9 @@ set(DOXYFILE_OUTPUT_DIR "${CMAKE_CURRENT_BINARY_DIR}/api-doc/chainmcmc")
 set(CMAKE_MODULE_PATH ${CMAKE_CURRENT_SOURCE_DIR})
 include(UseDoxygen)
 
+
 #Test
+if (CMAKE_BUILD_TYPE MATCHES Debug)
 find_package(CxxTest)
 if(CXXTEST_FOUND)
 	enable_testing()
@@ -43,5 +57,6 @@ if(CXXTEST_FOUND)
 		CXXTEST_ADD_TEST(${ftest} ${ftest}.cc ${test})
 		target_link_libraries(${ftest} chainmcmc)
 	ENDFOREACH()
+endif()
 endif()
 
