@@ -78,26 +78,19 @@ namespace chainmcmc {
 	}
 
 	std::vector<std::vector<parameter_t> > random_samples_from_file( 
-			const size_t &no, const std::string & filename, const size_t tail ) {
+			const size_t &no, const std::string & fname, const size_t tail ) {
 		std::vector<std::vector<parameter_t> > rnd_samples;
-		auto tr = read_trace( filename );
-		std::vector<size_t> ids;
-		size_t j = 0;
-		if (!(tail == 0 || tail >= tr[0].size()))
-			j = tr[0].size() - tail;
+		std::ifstream infile;
+		infile.open( fname );
 
-		for (; j < tr[0].size(); ++j)
-			ids.push_back(j);
-
+		auto samples = read_trace_per_sample( infile, tail );
+	
 		std::mt19937 eng;
 
-		chainmcmc::fisherYatesKSubsets( ids, no, eng );
+		chainmcmc::fisherYatesKSubsets( samples, no, eng );
 
 		for (size_t i = 0; i < no; ++i) {
-			rnd_samples.push_back( std::vector<parameter_t>() );
-			for ( auto & par_v : tr ) {
-				rnd_samples[i].push_back( par_v[ids[i]] );
-			}
+			rnd_samples.push_back( samples[i] );
 		}
 		return rnd_samples;
 	}
