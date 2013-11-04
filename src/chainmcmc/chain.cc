@@ -24,6 +24,12 @@
 #include "chainmcmc/chain.hh"
 
 namespace chainmcmc {
+
+/**
+ * \brief step contains many small functions that are used for doing steps
+ *
+ * Design decisions: These functions are all self contained to improve testability. This design is influenced by functional programming paradigms, again mainly to improve testability and reusability.
+ */
 namespace step {
 	double mh_log_weight( const likelihood_t &ll,
 			const std::vector<parameter_t> &pars,
@@ -114,16 +120,26 @@ namespace step {
 			size_t no_tries = 0;
 			double sd = 0.001;
 
-	ParameterState adapt_parameter_sd( ParameterState && ps ) {
-		if (ps.no_tries>100) {
-			double alpha = ((double) ps.no_accepts)/ps.no_tries;
-			if ( alpha > 0.25 )
-				ps.sd *= 1.05;
-			else if ( alpha < 0.20 )
-				ps.sd /= 1.05;
-			if (sd <= 0)
-				ps.sd = std::numeric_limits<double>::min()*1000;
+	double adapt_step_size( const double current_step_size,
+			const size_t no_tries, const size_t no_accepts,
+			const size_t minimum_tries, const double min_level, const double max_level ) {
+		double step_size = current_step_size;
+		if (no_tries>minimum_tries) {
+			double alpha = ((double) no_accepts)/no_tries;
+			if ( alpha > max_level)
+				step_size*=1.05;
+			else if ( alpha < min_level)
+				step_size/=1.05;
 		}
+		if (step_size <= 0)
+			step_size = std::numeric_limits<double>::min()*1000;
+		return step_size;
+	}
+
+
+	ParameterState adapt_parameter_sd( ParameterState && ps ) {
+		ps.sd = adapt_step_size( ps.sd, ps.no_tries, ps.no_accepts,
+				100, 0.20, 0.25 );
 		return ps;
 	}
 
@@ -259,6 +275,7 @@ ChainController::ChainController( const likelihood_t &loglikelihood,
 		const std::vector<std::vector<parameter_t> > &pars_v,
 		const std::vector<prior_t> &priors, size_t warm_up, size_t total_steps,
 		size_t no_chains ) : no_chains( no_chains ), warm_up( warm_up ) {
+
 	setup( loglikelihood, pars_v, priors, no_chains );
 
 	run( total_steps );
@@ -322,15 +339,10 @@ void ChainController::step() {
 		++no_tries;
 		if (accept) {
 			++no_accepts;
-			if (no_tries>10) {
-				double alpha = ((double) no_accepts)/no_tries;
-				if (alpha < 0.2)
-					dt *= 1.05;
-				if (alpha > 0.6)
-					dt /= 1.05;
-				if (dt == 0)
-					dt = 0.01;
-			}
+
+			dt = step::adapt_step_size( dt, no_tries, no_accepts,
+				10, 0.2, 0.6 );
+
 			send( chains[ids[0]], atom("temp"), (1+dt*ids[1]) );
 			send( chains[ids[1]], atom("temp"), (1+dt*ids[0]) );
 		}

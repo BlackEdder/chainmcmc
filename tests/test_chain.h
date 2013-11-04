@@ -235,5 +235,20 @@ class TestChain : public CxxTest::TestSuite
 					{ prior, prior }, 1.0 );
 			TS_ASSERT_EQUALS( state.current_parameter, 0 );
 		}
+
+		void testAdaptStepSize() {
+			/*double adapt_step_size( const double current_step_size,
+			const size_t no_tries, const size_t no_accepts,
+			const size_t minimum_tries, const double min_level, const double max_level )*/
+			TS_ASSERT_EQUALS( adapt_step_size( 1.0, 10, 5, 9, 0.3, 0.4 ),
+					1.0*1.05 );
+			TS_ASSERT_EQUALS( adapt_step_size( 1.0, 10, 5, 11, 0.3, 0.4 ),
+					1.0 );
+
+			TS_ASSERT_EQUALS( adapt_step_size( 1.0, 10, 2, 9, 0.3, 0.4 ),
+					1.0/1.05 );
+
+			TS_ASSERT( adapt_step_size( 0, 10, 2, 9, 0.3, 0.4 ) >	0 );
+		}
 };
 	

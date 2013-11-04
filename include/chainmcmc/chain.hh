@@ -82,6 +82,17 @@ namespace step {
 	parameter_t rparameter( std::mt19937 &eng, const parameter_t &par, 
 			const double &sd );
 
+	/**
+	 * \brief Adapt the step size
+	 *
+	 * \param minimum_tries Only start adjusting after this number of tries
+	 * \param min_level Adjust step size if acceptance rate below this level
+	 * \param max_level Adjust step size if acceptance rate above this level
+	 */
+	double adapt_step_size( const double current_step_size,
+			const size_t no_tries, const size_t no_accepts,
+			const size_t minimum_tries, const double min_level, const double max_level );
+
 	class ParameterState {
 		public:
 			size_t no_accepts = 0;
