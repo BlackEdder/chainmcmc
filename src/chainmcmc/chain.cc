@@ -247,50 +247,21 @@ void Chain::step()  {
 ChainController::ChainController( const likelihood_t &loglikelihood, 
 		const std::vector<parameter_t> &parameters,
 		const std::vector<prior_t> &priors, size_t warm_up, size_t total_steps,
-			size_t no_threads ) : no_chains( no_threads ), warm_up( warm_up ) {
-	for ( size_t i = 0; i < no_chains; ++i ) {
-		std::mt19937 eng;
-		eng.seed( engine() );
-		ids.push_back( i );
-		double temp = (1+dt*i);
-		auto chain = spawn<Chain>( eng, loglikelihood, parameters,
-				priors, temp );
-		send( chain, atom("run"), 100 );
-		chains[i] = chain;
-	}
-	for ( size_t i = 0; i < (warm_up+total_steps)/100; ++i )
-		step();
-	for ( auto & id_chain : chains ) 
-		send( id_chain.second, atom("close") );
-	size_t i = 0; 
-	receive_for( i, chains.size() ) (
-		on( atom("closed") ) >> []() {}
-	);
+			size_t no_chains ) : no_chains( no_chains ), warm_up( warm_up ) {
+
+	setup( loglikelihood, {parameters}, priors, no_chains );
+
+	run( total_steps );
 }
 
 
 ChainController::ChainController( const likelihood_t &loglikelihood, 
 		const std::vector<std::vector<parameter_t> > &pars_v,
 		const std::vector<prior_t> &priors, size_t warm_up, size_t total_steps,
-		size_t no_threads ) {
-	for ( size_t i = 0; i < no_chains; ++i ) {
-		std::mt19937 eng;
-		eng.seed( engine() );
-		ids.push_back( i );
-		double temp = (1+dt*i);
-		auto chain = spawn<Chain>( eng, loglikelihood, pars_v[i%pars_v.size()],
-				priors, temp );
-		send( chain, atom("run"), 100 );
-		chains[i] = chain;
-	}
-	for ( size_t i = 0; i < (warm_up+total_steps)/100; ++i )
-		step();
-	for ( auto & id_chain : chains ) 
-		send( id_chain.second, atom("close") );
-	size_t i = 0; 
-	receive_for( i, chains.size() ) (
-		on( atom("closed") ) >> []() {}
-	);
+		size_t no_chains ) : no_chains( no_chains ), warm_up( warm_up ) {
+	setup( loglikelihood, pars_v, priors, no_chains );
+
+	run( total_steps );
 }
 
 void ChainController::step() {
@@ -366,5 +337,32 @@ void ChainController::step() {
 		send( chains[ids[1]], atom("run"), 100, log_on );
 	}
 	send( chains[ids[0]], atom("run"), 100, log_on );
+}
+
+	void ChainController::setup( const likelihood_t &loglikelihood, 
+			const std::vector<std::vector<parameter_t> > &pars_v,
+			const std::vector<prior_t> &priors,
+			size_t no_chains ) {
+		for ( size_t i = 0; i < no_chains; ++i ) {
+			std::mt19937 eng;
+			eng.seed( engine() );
+			ids.push_back( i );
+			double temp = (1+dt*i);
+			auto chain = spawn<Chain>( eng, loglikelihood, pars_v[i%pars_v.size()],
+					priors, temp );
+			send( chain, atom("run"), 100 );
+			chains[i] = chain;
+		} 
+	}
+	
+void ChainController::run( const size_t total_steps ) {
+	for ( size_t i = 0; i < (warm_up+total_steps)/100; ++i )
+		step();
+	for ( auto & id_chain : chains ) 
+		send( id_chain.second, atom("close") );
+	size_t i = 0; 
+	receive_for( i, chains.size() ) (
+		on( atom("closed") ) >> []() {}
+	);
 }
 };

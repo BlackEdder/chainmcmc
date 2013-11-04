@@ -194,6 +194,11 @@ class ChainController {
 		size_t no_accepts = 0;
 
 		int warm_up = 0;
+		void setup( const likelihood_t &loglikelihood, 
+				const std::vector<std::vector<parameter_t> > &pars_v,
+				const std::vector<prior_t> &priors,
+				size_t no_chains );
+		void run(const size_t total_steps);
 };
 };
 #endif
