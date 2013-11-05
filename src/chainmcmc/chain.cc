@@ -213,7 +213,8 @@ void Chain::init()  {
 				step();
 			}
 		},
-		on( atom( "run" ), arg_match ) >> [this]( const int no, const bool start_logging ) {
+		on( atom( "run" ), arg_match ) >> [this]( 
+			const int no, const bool start_logging ) {
 			log_on = start_logging;
 			for (size_t i = 0; i < (size_t)no; ++i) {
 				step();
@@ -243,7 +244,7 @@ void Chain::init()  {
 void Chain::step()  {
 	state = step::step( rnd_engine, std::move( state ), loglikelihood, priors,
 			temperature );
-	if (temperature == 1 && state.generation%50 == 0 && log_on) {
+	if (state.generation%50 == 0 && log_on) {
 		std::stringstream s; // Collect output in stringstream for thread safety
 		bool first = true;
 		/*std::cout << state.loglikelihood << ", " << temperature << 
@@ -283,12 +284,12 @@ ChainController::ChainController( const likelihood_t &loglikelihood,
 
 void ChainController::step() {
 	warm_up -= 100;
-	bool log_on = false;
-	if (warm_up<0)
-		log_on = true;
 	if (chains.size()>1) {
 		fisherYatesKSubsets( ids, 2, engine );
 		for ( size_t i = 2; i < ids.size(); ++i ) {
+			bool log_on = false;
+			if (warm_up<0 && ids[i]==0)
+				log_on = true;
 			send( chains[ids[i]], atom("run"), 100, log_on );
 		}
 
@@ -343,8 +344,17 @@ void ChainController::step() {
 			send( chains[ids[0]], atom("temp"), (1+dt*ids[1]) );
 			send( chains[ids[1]], atom("temp"), (1+dt*ids[0]) );
 		}
+
+		bool log_on = false;
+		if (warm_up<0 && ids[1]==0)
+			log_on = true;
+
 		send( chains[ids[1]], atom("run"), 100, log_on );
 	}
+
+	bool log_on = false;
+	if (warm_up<0 && ids[0]==0)
+		log_on = true;
 	send( chains[ids[0]], atom("run"), 100, log_on );
 }
 
