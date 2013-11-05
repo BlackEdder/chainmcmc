@@ -172,12 +172,12 @@ std::vector<T> fisherYatesKSubsets( std::vector<T> &v,
  * Run them for a certain amount of steps
  * Choose two random ones and try to swap them
  * If accepted then swap temperatures.
- *
+ * 
  * For optimal performace we first choose the two to swap,
- * Then tell those two to run 100 generations, and all the others run 200
+ * Then tell those two to run n generations, and all the others run 2n 
  * Then we try/perform the swap 
- * Tell the original two to run another 100 generations. Choose two and tell the
- * others to run to 300 generations etc
+ * Tell the original two to run another n generations. Choose two and tell the
+ * others to run to 3n generations etc
  */
 class ChainController {
 	public:
@@ -205,6 +205,8 @@ class ChainController {
 		size_t no_accepts = 0;
 
 		int warm_up = 0;
+
+		size_t no_steps_between_swaps = 15; //! Try swap after this many steps
 		void setup( const likelihood_t &loglikelihood, 
 				const std::vector<std::vector<parameter_t> > &pars_v,
 				const std::vector<prior_t> &priors,

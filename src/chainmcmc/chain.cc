@@ -283,14 +283,14 @@ ChainController::ChainController( const likelihood_t &loglikelihood,
 }
 
 void ChainController::step() {
-	warm_up -= 100;
+	warm_up -= no_steps_between_swaps;
 	if (chains.size()>1) {
 		fisherYatesKSubsets( ids, 2, engine );
 		for ( size_t i = 2; i < ids.size(); ++i ) {
 			bool log_on = false;
 			if (warm_up<0 && ids[i]==0)
 				log_on = true;
-			send( chains[ids[i]], atom("run"), 100, log_on );
+			send( chains[ids[i]], atom("run"), no_steps_between_swaps, log_on );
 		}
 
 		double weight1, weight2;
@@ -349,13 +349,13 @@ void ChainController::step() {
 		if (warm_up<0 && ids[1]==0)
 			log_on = true;
 
-		send( chains[ids[1]], atom("run"), 100, log_on );
+		send( chains[ids[1]], atom("run"), no_steps_between_swaps, log_on );
 	}
 
 	bool log_on = false;
 	if (warm_up<0 && ids[0]==0)
 		log_on = true;
-	send( chains[ids[0]], atom("run"), 100, log_on );
+	send( chains[ids[0]], atom("run"), no_steps_between_swaps, log_on );
 }
 
 	void ChainController::setup( const likelihood_t &loglikelihood, 
@@ -369,13 +369,13 @@ void ChainController::step() {
 			double temp = (1+dt*i);
 			auto chain = spawn<Chain>( eng, loglikelihood, pars_v[i%pars_v.size()],
 					priors, temp );
-			send( chain, atom("run"), 100 );
+			send( chain, atom("run"), no_steps_between_swaps );
 			chains[i] = chain;
 		} 
 	}
 	
 void ChainController::run( const size_t total_steps ) {
-	for ( size_t i = 0; i < (warm_up+total_steps)/100; ++i )
+	for ( size_t i = 0; i < (warm_up+total_steps)/no_steps_between_swaps; ++i )
 		step();
 	for ( auto & id_chain : chains ) 
 		send( id_chain.second, atom("close") );
