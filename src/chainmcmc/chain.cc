@@ -375,7 +375,8 @@ void ChainController::step() {
 	}
 	
 void ChainController::run( const size_t total_steps ) {
-	for ( size_t i = 0; i < (warm_up+total_steps)/no_steps_between_swaps; ++i )
+	size_t steps = (warm_up+total_steps)/no_steps_between_swaps;
+	for ( size_t i = 0; i < steps; ++i )
 		step();
 	for ( auto & id_chain : chains ) 
 		send( id_chain.second, atom("close") );
