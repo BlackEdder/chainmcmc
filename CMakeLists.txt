@@ -14,7 +14,8 @@ if (NOT CPPA)
 include_directories("include")
 
 SET (CMAKE_LIBRARY_OUTPUT_DIRECTORY lib)
-add_library( chainmcmc SHARED src/chainmcmc/chain.cc;src/chainmcmc/trace.cc;src/chainmcmc/file.cc)
+add_library( chainmcmc SHARED
+	src/chainmcmc/chain.cc;src/chainmcmc/trace.cc;src/chainmcmc/file.cc;src/chainmcmc/logger.cc)
 target_link_libraries( chainmcmc ${CPPA})
 
 SET (CMAKE_RUNTIME_OUTPUT_DIRECTORY bin)
@@ -38,6 +39,7 @@ install (FILES include/chainmcmc/chainmcmc.hh
 	include/chainmcmc/chain.hh
 	include/chainmcmc/file.hh
 	include/chainmcmc/trace.hh
+	include/chainmcmc/logger.hh
  	DESTINATION include/chainmcmc)
 
 #Documentation
