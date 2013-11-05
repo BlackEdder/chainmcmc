@@ -220,6 +220,18 @@ void Chain::init()  {
 				step();
 			}
 		},
+		on( atom( "run" ), arg_match ) >> [this]( const size_t no ) {
+			for (size_t i = 0; i < no; ++i) {
+				step();
+			}
+		},
+		on( atom( "run" ), arg_match ) >> [this]( 
+			const size_t no, const bool start_logging ) {
+			log_on = start_logging;
+			for (size_t i = 0; i < no; ++i) {
+				step();
+			}
+		},
 		on( atom( "step" ) ) >> [this]() {
 			step();
 		},
@@ -338,7 +350,7 @@ void ChainController::step() {
 		if (accept) {
 			++no_accepts;
 
-			dt = step::adapt_step_size( dt, no_tries, no_accepts,
+			dt = 1.0/step::adapt_step_size( 1.0/dt, no_tries, no_accepts,
 				10, 0.2, 0.6 );
 
 			send( chains[ids[0]], atom("temp"), (1+dt*ids[1]) );
