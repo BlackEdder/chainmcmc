@@ -28,6 +28,8 @@
 
 #include <cppa/cppa.hpp>
 
+#include "chainmcmc/logger.hh"
+
 namespace chainmcmc {
 using namespace cppa;
 
@@ -143,6 +145,8 @@ class Chain : public event_based_actor {
 
 		bool log_on = false;
 
+		actor_ptr logger = spawn<Logger>( std::cout );
+
 		void step();
 };
 
@@ -184,12 +188,12 @@ class ChainController {
 		ChainController( const likelihood_t &loglikelihood, 
 		const std::vector<parameter_t> &parameters,
 		const std::vector<prior_t> &priors, size_t warm_up, size_t total_steps,
-			size_t no_threads );
+			size_t no_threads, std::ostream &out = std::cout );
 
 		ChainController( const likelihood_t &loglikelihood, 
 		const std::vector<std::vector<parameter_t> > &pars_v,
 		const std::vector<prior_t> &priors, size_t warm_up, size_t total_steps,
-			size_t no_threads );
+			size_t no_threads, std::ostream &out = std::cout );
 
 
 		void step();
@@ -207,10 +211,13 @@ class ChainController {
 		int warm_up = 0;
 
 		size_t no_steps_between_swaps = 15; //! Try swap after this many steps
+
+		actor_ptr logger;
+
 		void setup( const likelihood_t &loglikelihood, 
 				const std::vector<std::vector<parameter_t> > &pars_v,
 				const std::vector<prior_t> &priors,
-				size_t no_chains );
+				size_t no_chains, std::ostream &out );
 		void run(const size_t total_steps);
 };
 };

@@ -246,7 +246,11 @@ void Chain::init()  {
 		on( atom("temp" ) ) >> [this]() {
 			return temperature;
 		},
-		on( atom("close" ) ) >> []() {
+		on( atom( "logger" ), arg_match ) >> [this]( const actor_ptr &new_logger ) {
+			send( logger, atom("close") );
+			logger = new_logger;
+		},
+		on( atom("close" ) ) >> [this]() {
 			self->quit();
 			return atom("closed");
 		}
@@ -268,17 +272,16 @@ void Chain::step()  {
 			} else
 				s	<< "\t" << par;
 		}
-		s << std::endl;
-		std::cout << s.str() << std::flush; 
+		send( logger, atom("append"), s.str() ); 
 	}
 }
 
 ChainController::ChainController( const likelihood_t &loglikelihood, 
 		const std::vector<parameter_t> &parameters,
 		const std::vector<prior_t> &priors, size_t warm_up, size_t total_steps,
-			size_t no_chains ) : no_chains( no_chains ), warm_up( warm_up ) {
+			size_t no_chains, std::ostream &out ) : no_chains( no_chains ), warm_up( warm_up ) {
 
-	setup( loglikelihood, {parameters}, priors, no_chains );
+	setup( loglikelihood, {parameters}, priors, no_chains, out );
 
 	run( total_steps );
 }
@@ -287,9 +290,9 @@ ChainController::ChainController( const likelihood_t &loglikelihood,
 ChainController::ChainController( const likelihood_t &loglikelihood, 
 		const std::vector<std::vector<parameter_t> > &pars_v,
 		const std::vector<prior_t> &priors, size_t warm_up, size_t total_steps,
-		size_t no_chains ) : no_chains( no_chains ), warm_up( warm_up ) {
+		size_t no_chains, std::ostream &out ) : no_chains( no_chains ), warm_up( warm_up ) {
 
-	setup( loglikelihood, pars_v, priors, no_chains );
+	setup( loglikelihood, pars_v, priors, no_chains, out );
 
 	run( total_steps );
 }
@@ -373,7 +376,7 @@ void ChainController::step() {
 	void ChainController::setup( const likelihood_t &loglikelihood, 
 			const std::vector<std::vector<parameter_t> > &pars_v,
 			const std::vector<prior_t> &priors,
-			size_t no_chains ) {
+			size_t no_chains, std::ostream &out ) {
 		for ( size_t i = 0; i < no_chains; ++i ) {
 			std::mt19937 eng;
 			eng.seed( engine() );
@@ -381,6 +384,8 @@ void ChainController::step() {
 			double temp = (1+dt*i);
 			auto chain = spawn<Chain>( eng, loglikelihood, pars_v[i%pars_v.size()],
 					priors, temp );
+			logger = spawn<Logger>( out );
+			send( chain, atom("logger"), logger );
 			send( chain, atom("run"), no_steps_between_swaps );
 			chains[i] = chain;
 		} 
@@ -394,6 +399,10 @@ void ChainController::run( const size_t total_steps ) {
 		send( id_chain.second, atom("close") );
 	size_t i = 0; 
 	receive_for( i, chains.size() ) (
+		on( atom("closed") ) >> []() {}
+	);
+	send( logger, atom("close") );
+	receive(
 		on( atom("closed") ) >> []() {}
 	);
 }

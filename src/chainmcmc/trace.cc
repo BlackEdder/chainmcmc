@@ -42,7 +42,7 @@ namespace chainmcmc {
 
 
 	std::vector<std::vector<parameter_t> > read_trace_per_sample( 
-			std::ifstream& infile, const size_t tail ) {
+			std::istream& infile, const size_t tail ) {
 		if (tail != 0) {
 			file_helpers::move_last_lines( infile, tail );
 		}
@@ -68,7 +68,7 @@ namespace chainmcmc {
 
 
 	std::vector<std::vector<parameter_t> > follow_trace_per_sample(
-		std::ifstream& infile ) {
+		std::istream& infile ) {
 		std::vector<std::vector<parameter_t> > samples;
 		auto lines = file_helpers::get_lines_and_move( infile );
 		for ( auto & line : lines ) {
@@ -93,6 +93,24 @@ namespace chainmcmc {
 			rnd_samples.push_back( samples[i] );
 		}
 		return rnd_samples;
+	}
+
+
+	std::vector<double> means( const std::vector<sample_t> & samples ) {
+		std::vector<double> means;
+		if (samples.size()>0) {
+			means = std::vector<double>( samples[0].size() );
+			for ( auto & mean : means )
+				mean = 0;
+			for ( auto & sample : samples ) {
+				for ( size_t i = 0; i < sample.size(); ++i ) {
+					means[i] += sample[i];
+				}
+			}
+		}
+		for ( auto & mean : means )
+			mean /= samples.size();
+		return means;
 	}
 	};
 };

@@ -36,6 +36,9 @@
 
 namespace chainmcmc {
 namespace trace {
+	typedef std::vector<parameter_t> sample_t;
+
+
 	namespace details {
 		double mean_v( const std::vector<double> &v ) {
 			double sum = std::accumulate( v.begin(), v.end(), 0.0, 
@@ -93,13 +96,13 @@ namespace trace {
 	 * \param tail Read the given number of samples from the end. Set to zero to read the whole file
 	 */
 	std::vector<std::vector<parameter_t> > read_trace_per_sample( 
-			std::ifstream& infile, const size_t tail = 0 );
+			std::istream& infile, const size_t tail = 0 );
 
 	/**
 	 * \brief Read any new samples that have been appended to the trace file
 	 */
 	std::vector<std::vector<parameter_t> > follow_trace_per_sample( 
-			std::ifstream& infile );
+			std::istream& infile );
 
 
 	/**
@@ -109,6 +112,13 @@ namespace trace {
 	 */
 	std::vector<std::vector<parameter_t> > random_samples_from_file( 
 			const size_t &no, const std::string & filename, const size_t tail = 0 ); 
+
+	/**
+	 * \brief Returns means of the parameters in the trace
+	 *
+	 * Trace is assumed to be a vector of samples
+	 */
+	std::vector<double> means( const std::vector<sample_t> &samples );
 };
 };
 #endif

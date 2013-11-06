@@ -26,7 +26,7 @@
 #include<iostream>
 
 namespace file_helpers {
-	void move_last_lines( std::ifstream& fin, const size_t n ) {
+	void move_last_lines( std::istream& fin, const size_t n ) {
 		fin.seekg( 0,std::ios_base::end);
 		if (n!=0) { 
 			size_t no_found = 0;
@@ -47,7 +47,7 @@ namespace file_helpers {
 		}
 	}
 
-	std::vector<std::string> get_lines_and_move( std::ifstream& infile ) {
+	std::vector<std::string> get_lines_and_move( std::istream& infile ) {
 		std::vector<std::string> lines;
 		std::string line;
 		while (std::getline(infile, line)) {

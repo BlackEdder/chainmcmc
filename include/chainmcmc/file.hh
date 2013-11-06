@@ -37,12 +37,12 @@ namespace file_helpers {
 	 * Implementation detail: cannot return an ifstream, not sure if move is still not
 	 * implemented in c++11 or if I am missing how exactly to do it.
 	 */
-	void move_last_lines( std::ifstream& infile, const size_t n );
+	void move_last_lines( std::istream& infile, const size_t n );
 
 	/**
 	 * \brief Get lines starting from current position and move position to the end
 	 */
-	std::vector<std::string> get_lines_and_move( std::ifstream& infile );
+	std::vector<std::string> get_lines_and_move( std::istream& infile );
 
 	/**
 	 * \brief Read last lines from the given file
