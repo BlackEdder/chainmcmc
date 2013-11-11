@@ -119,6 +119,9 @@ namespace trace {
 	 * Trace is assumed to be a vector of samples
 	 */
 	std::vector<double> means( const std::vector<sample_t> &samples );
+
+	std::vector<double> variances_sample( 
+			const std::vector<sample_t> & samples );
 };
 };
 #endif

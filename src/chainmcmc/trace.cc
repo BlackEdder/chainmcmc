@@ -112,5 +112,24 @@ namespace chainmcmc {
 			mean /= samples.size();
 		return means;
 	}
+
+	std::vector<double> variances_sample( 
+			const std::vector<sample_t> & samples ) {
+		std::vector<double> ms = means( samples );
+		std::vector<double> vs( ms.size() );
+
+		if (samples.size()>0) {
+			for ( auto & v : vs )
+				v = 0;
+			for ( auto & sample : samples ) {
+				for ( size_t i = 0; i < sample.size(); ++i ) {
+					vs[i] += pow(ms[i] - sample[i],2);
+				}
+			}
+		}
+		for ( auto & v : vs )
+			v /= samples.size();
+		return vs;
+	}	
 	};
 };
