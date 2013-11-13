@@ -201,6 +201,12 @@ class TestChain : public CxxTest::TestSuite
 				TS_ASSERT_DELTA( rparameter( eng1, 1.2, 0.001 ),
 					1.2 + rnorm( eng2 ), 0.005 );
 			}
+
+			// Special rules for infinite and -infinite
+			TS_ASSERT( std::isfinite( rparameter( eng1, log(0), 0.001 ) ) );
+			TS_ASSERT( rparameter( eng1, log(0), 0.001 )<0 );
+			TS_ASSERT( std::isfinite( rparameter( eng1, -log(0), 0.001 ) ) );
+			TS_ASSERT( rparameter( eng1, -log(0), 0.001 )>0 );
 		}
 
 		void testStep() {

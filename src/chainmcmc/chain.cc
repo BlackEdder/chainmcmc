@@ -114,11 +114,13 @@ namespace step {
 	parameter_t rparameter( std::mt19937 &eng, const parameter_t &par, 
 			const double &sd ) {
 		std::normal_distribution<double> rnorm( 0, sd );
-		return par + rnorm( eng );
+		if ( std::isfinite( par ) )
+			return par + rnorm( eng );
+		else if (par<0) // -inf
+			return std::numeric_limits<double>::min()*100 + rnorm( eng );
+		else
+			return std::numeric_limits<double>::max()/100.0 + rnorm( eng );
 	}
-			size_t no_accepts = 0;
-			size_t no_tries = 0;
-			double sd = 0.001;
 
 	double adapt_step_size( const double current_step_size,
 			const size_t no_tries, const size_t no_accepts,
