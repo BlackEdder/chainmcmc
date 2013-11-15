@@ -61,6 +61,11 @@ namespace step {
 		return sum/temperature;
 	}
 
+	/**
+	 * \brief Metropolis Hastings acceptance rule.
+	 *
+	 * \param temperature is actually unused here and assumed to be already included in the lweight parameters
+	 */
 	bool accept( std::mt19937 &eng, 
 			const double &old_lweight,
 			const double &new_lweight,
@@ -339,8 +344,8 @@ void ChainController::step() {
 			}
 		);
 		// Try swap
-		double log_ratio = weight2/temp1+weight1/temp2 -
-				weight1/temp1 - weight2/temp2;
+		// ratio = weight2^(1/temp1)*weight1^(1/temp2)/(weight2^(1/temp2)*weight1^(1/temp1))
+		double log_ratio = ((temp2-temp1)*weight2+(temp1-temp2)*weight1)/(temp1*temp2);
 		bool accept = false;
 		if (std::isfinite(log_ratio)) { // Only consider switching when ratio is a finite number
 			if (log_ratio > 0)
