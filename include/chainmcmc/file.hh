@@ -32,6 +32,10 @@
  */
 namespace file_helpers {
 	/**
+	 * \brief Checks whether file exists
+	 */
+	bool file_exists(const std::string& name);
+	/**
 	 * \brief Move to the beginning of the last n lines
 	 *
 	 * Implementation detail: cannot return an ifstream, not sure if move is still not
