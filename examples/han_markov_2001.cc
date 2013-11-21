@@ -118,7 +118,8 @@ int main() {
 	auto tr1 = trace::read_trace_per_sample( out );
 
 	// Calculate marginal likelihood
-	std::cout << marginal_likelihood( ll1, priors1, tr1 ) << std::endl;
+	auto ml1 = marginal_likelihood( ll1, priors1, tr1 );
+	std::cout << ml1 << std::endl;
 
 	// Second model:
 	double mean_z = trace::details::mean_v( data_z );
@@ -152,7 +153,9 @@ int main() {
 	auto means_tr2 = trace::means( tr2 );
 	for (size_t i = 0; i < means_tr1.size(); ++i)
 		std::cout << means_tr1[i] << " " << means_tr2[i] << std::endl;
-	std::cout << marginal_likelihood( ll2, priors1, tr2 ) << std::endl;
+	auto ml2 = marginal_likelihood( ll2, priors1, tr2 );
+	std::cout << ml2 << std::endl;
+	std::cout << ml2/ml1 << " " << ml1/ml2 << std::endl;
 
 	return 0;
 }
