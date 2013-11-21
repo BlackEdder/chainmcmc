@@ -15,7 +15,7 @@ include_directories("include")
 
 SET (CMAKE_LIBRARY_OUTPUT_DIRECTORY lib)
 add_library( chainmcmc SHARED
-	src/chainmcmc/chain.cc;src/chainmcmc/trace.cc;src/chainmcmc/file.cc;src/chainmcmc/logger.cc)
+	src/chainmcmc/chain.cc;src/chainmcmc/trace.cc;src/chainmcmc/file.cc;src/chainmcmc/logger.cc;src/chainmcmc/prior.cc)
 target_link_libraries( chainmcmc ${CPPA})
 
 SET (CMAKE_RUNTIME_OUTPUT_DIRECTORY bin)
