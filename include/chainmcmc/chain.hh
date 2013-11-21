@@ -29,6 +29,7 @@
 #include <cppa/cppa.hpp>
 
 #include "chainmcmc/logger.hh"
+#include "chainmcmc/prior.hh"
 
 namespace chainmcmc {
 using namespace cppa;
@@ -50,9 +51,7 @@ using namespace cppa;
  * data
  */
 
-typedef double parameter_t;
 typedef std::function<double( const std::vector<parameter_t> )> likelihood_t;
-typedef std::function<double( const parameter_t )> prior_t;
 
 namespace step {
 

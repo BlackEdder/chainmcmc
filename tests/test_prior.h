@@ -32,6 +32,17 @@ class TestPrior : public CxxTest::TestSuite
 {
 	public:
 		void testNormal() {
-			TS_ASSERT( false );
+			auto correct = []( const double &x, const double &mu, const double &sigma ) {
+				return 1.0/(sigma*sqrt(2*pi()))*exp(-pow(x-mu,2)/(2*pow(sigma,2)));
+			};
+
+			auto pr1 = prior::normal( 1, 0.1 );
+			TS_ASSERT_EQUALS( correct( 1, 1, 0.1 ), pr1( 1 ) );
+			TS_ASSERT_EQUALS( correct( 1, 1, 0.1 ), pr1( 0.1 ) );
+			TS_ASSERT_DIFFERS( correct( 1, 1, 0.01 ), pr1( 1 ) );
+			auto pr1 = prior::normal( 2, 0.01 );
+			TS_ASSERT_EQUALS( correct( 1, 2, 0.01 ), pr1( 1 ) );
+			TS_ASSERT_EQUALS( correct( 0.1, 2, 0.01 ), pr1( 0.1 ) );
+			TS_ASSERT_DIFFERS( correct( 1, 2, 0.1 ), pr1( 1 ) );
 		}
 };

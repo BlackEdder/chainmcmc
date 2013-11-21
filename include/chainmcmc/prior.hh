@@ -23,9 +23,21 @@
 
 #ifndef PRIOR_HH 
 #define PRIOR_HH
+#include<functional>
+#include<cmath>
 
 namespace chainmcmc {
+	typedef double parameter_t;
+	typedef std::function<double( const parameter_t )> prior_t;
 	namespace prior {
+		constexpr double pi() { return std::atan2(0,-1); }
+		
+		/**
+		 * \brief Prior for normal distribution given mean and standard deviation
+		 *
+		 * \param sigma This is the standard deviation, not the variance
+		 */
+		prior_t normal( const double &mu, const double &sigma );
 	};
 };
 #endif

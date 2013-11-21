@@ -25,5 +25,10 @@
 
 namespace chainmcmc {
 	namespace prior {
+		prior_t normal( const double &mu, const double &sigma ) {
+			return [&mu, &sigma]( const parameter_t &x ) {
+				return 1.0/(sigma*sqrt(2.0*pi()))*exp(-pow(x-mu,2)/(2*pow(sigma,2)));
+			};
+		}
 	};
 };
