@@ -22,6 +22,7 @@
 */
 
 #include<chainmcmc/chainmcmc.hh>
+#include<algorithm>
 
 using namespace chainmcmc;
 
@@ -32,6 +33,44 @@ double dnorm( double x, double mu, double sigma, bool log_v = false ) {
 		return lp;
 	else
 		return exp(lp);
+}
+
+double accept_prob( const std::vector<parameter_t> &new_pars,
+		const std::vector<parameter_t> &old_pars, const likelihood_t &ll, 
+		const std::vector<prior_t> &priors ) {
+	double alpha = exp( step::mh_log_weight( ll, new_pars, priors, 1 ) -
+			step::mh_log_weight( ll, old_pars, priors, 1 ) );
+	alpha = std::min( 1.0, alpha );
+	return alpha;
+}
+
+double marginal_likelihood( const likelihood_t &ll, 
+		const std::vector<prior_t> &priors, 
+		const std::vector<std::vector<parameter_t> > &tr ) {
+	std::mt19937 eng;
+	auto theta_star = trace::means( tr );
+	auto theta_var = trace::variances_sample( tr );
+	size_t no_samples = 1000;
+	double numer = 0;
+	double denom = 0;
+	for (size_t i = 0; i < no_samples; ++i) {
+		auto theta_g = tr[ tr.size()-1-i ];
+		double tmp = accept_prob( theta_g, theta_star, ll, priors );
+		for ( size_t j = 0; j < theta_star.size(); ++j )
+			tmp *= dnorm( theta_g[j], theta_star[j], theta_var[j], false );
+		numer += tmp;
+
+		theta_g = theta_star;
+		for ( size_t j = 0; j < theta_star.size(); ++j ) {
+			std::normal_distribution<double> rnorm( 0, theta_var[j] );
+			theta_g[j] += rnorm( eng );
+		}
+
+		denom += accept_prob( theta_star, theta_g, ll, priors );
+	}
+	double lpi = log( numer/denom );
+
+	return exp(step::mh_log_weight( ll, theta_star, priors, 1 )-lpi);
 }
 
 /**
@@ -47,39 +86,73 @@ int main() {
 	std::vector<double> data_z = { 25.4, 22.2, 32.2, 31.0, 30.9, 23.9, 19.2, 27.2, 26.3, 23.9, 33.2, 21.0, 29.0, 22.0, 23.8, 25.3, 34.2, 25.7, 26.4, 20.0, 23.9, 30.7, 32.6, 32.5, 20.8, 23.1, 29.8, 38.1, 21.3, 28.5, 29.2, 31.4, 25.9, 21.4, 29.8, 30.6, 22.6, 30.3, 23.8, 18.4, 29.4, 28.2 };
 
 	double mean_x = trace::details::mean_v( data_x );
+
 	likelihood_t ll1 = [&mean_x, &data_x, &data_y]( const std::vector<parameter_t>
 			&pars ) {
 		double ll = 0;
 		for (size_t i = 0; i < data_x.size(); ++i) {
 			double mu = pars[0]+pars[1]*(data_x[i]-mean_x);
-			ll += dnorm( data_y[i], mu, pars[2], true );
+			ll += dnorm( data_y[i], mu, sqrt(pars[2]), true );
 		}
 		return ll;
 	};
 
-	std::vector<parameter_t> init_pars1 = { 3000, 185, 1 };
+	std::vector<parameter_t> init_pars1 = { 3000, 185, pow(300,2) };
 	std::vector<prior_t> priors1 = { prior::normal( 3000, 1e6 ),
 		prior::normal( 185, 1e4 ), prior::inverse_gamma( 3.0, 1.0/(2*pow(300,2)) ) };
 
-	auto chain = spawn<Chain>( eng, ll1, init_pars1, priors1 ); 
+	auto chain = spawn<Chain>( eng, ll1, init_pars1, priors1 );
 
-	send( chain, atom("run"), 100000, true );
+	std::stringstream out;
+	auto logger = spawn<Logger>( out );
+	send( chain, atom("logger"), logger );
+
+	send( chain, atom("run"), 1000000, false );
+	send( chain, atom("run"), 1000000, true );
 	send( chain, atom("log_weight") );
 	receive( 
-			on( arg_match ) >> []( const double &lw ) { 
+			on( arg_match ) >> [&out]( const double &lw ) {
+			//std::cout << out.str() << std::endl;
 			std::cout << "Weight: " << exp( lw ) << std::endl; } );
-	
 
+	auto tr1 = trace::read_trace_per_sample( out );
+
+	// Calculate marginal likelihood
+	std::cout << marginal_likelihood( ll1, priors1, tr1 ) << std::endl;
+
+	// Second model:
 	double mean_z = trace::details::mean_v( data_z );
 	likelihood_t ll2 = [&mean_z, &data_z, &data_y]( const std::vector<parameter_t>
 			&pars ) {
 		double ll = 0;
 		for (size_t i = 0; i < data_y.size(); ++i) {
 			double mu = pars[0]+pars[1]*(data_z[i]-mean_z);
-			ll += dnorm( data_y[i], mu, pars[2], true );
+			ll += dnorm( data_y[i], mu, sqrt(pars[2]), true );
 		}
 		return ll;
 	};
+
+	chain = spawn<Chain>( eng, ll2, init_pars1, priors1 );
+
+	out.clear();
+	logger = spawn<Logger>( out );
+	send( chain, atom("logger"), logger );
+
+	send( chain, atom("run"), 1000000, false );
+	send( chain, atom("run"), 1000000, true );
+	send( chain, atom("log_weight") );
+	receive( 
+			on( arg_match ) >> [&out]( const double &lw ) {
+			//std::cout << out.str() << std::endl;
+			std::cout << "Weight: " << exp( lw ) << std::endl; } );
+
+	auto tr2 = trace::read_trace_per_sample( out );
+
+	auto means_tr1 = trace::means( tr1 );
+	auto means_tr2 = trace::means( tr2 );
+	for (size_t i = 0; i < means_tr1.size(); ++i)
+		std::cout << means_tr1[i] << " " << means_tr2[i] << std::endl;
+	std::cout << marginal_likelihood( ll2, priors1, tr2 ) << std::endl;
 
 	return 0;
 }
