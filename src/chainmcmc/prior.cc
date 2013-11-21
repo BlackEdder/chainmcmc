@@ -23,11 +23,31 @@
 
 #include "chainmcmc/prior.hh"
 
+#include <boost/math/distributions/inverse_gamma.hpp>
+
 namespace chainmcmc {
 	namespace prior {
 		prior_t normal( const double &mu, const double &sigma ) {
 			return [&mu, &sigma]( const parameter_t &x ) {
 				return 1.0/(sigma*sqrt(2.0*pi()))*exp(-pow(x-mu,2)/(2*pow(sigma,2)));
+			};
+		}
+
+		prior_t inverse_gamma( const double &alpha, const double &beta ) {
+			return [&alpha, &beta]( const parameter_t &x ) {
+				return boost::math::pdf( 
+						boost::math::inverse_gamma_distribution<double>( alpha,
+							beta ), x );
+			};
+		}
+
+		prior_t uniform( const double &min, const double &max ) {
+			static double prob = 1.0/(max-min); // No need to calculate everytime
+			return [&min, &max]( const double &x ) {
+				if (x>=min && x<=max)
+					return prob;
+				else
+					return 0.0;
 			};
 		}
 	};

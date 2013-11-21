@@ -38,6 +38,10 @@ namespace chainmcmc {
 		 * \param sigma This is the standard deviation, not the variance
 		 */
 		prior_t normal( const double &mu, const double &sigma );
+
+		prior_t inverse_gamma( const double &alpha, const double &beta );
+
+		prior_t uniform( const double &min, const double &max );
 	};
 };
 #endif

@@ -38,11 +38,28 @@ class TestPrior : public CxxTest::TestSuite
 
 			auto pr1 = prior::normal( 1, 0.1 );
 			TS_ASSERT_EQUALS( correct( 1, 1, 0.1 ), pr1( 1 ) );
-			TS_ASSERT_EQUALS( correct( 1, 1, 0.1 ), pr1( 0.1 ) );
+			TS_ASSERT_EQUALS( correct( 0.1, 1, 0.1 ), pr1( 0.1 ) );
 			TS_ASSERT_DIFFERS( correct( 1, 1, 0.01 ), pr1( 1 ) );
-			auto pr1 = prior::normal( 2, 0.01 );
+			pr1 = prior::normal( 2, 0.01 );
 			TS_ASSERT_EQUALS( correct( 1, 2, 0.01 ), pr1( 1 ) );
 			TS_ASSERT_EQUALS( correct( 0.1, 2, 0.01 ), pr1( 0.1 ) );
 			TS_ASSERT_DIFFERS( correct( 1, 2, 0.1 ), pr1( 1 ) );
+		}
+
+		void testIG() {
+			auto pr = prior::inverse_gamma( 3, 1 );
+			// Proper values are taken from wikipedia plot (not very precise)
+			TS_ASSERT_DELTA( pr( 0.5 ), 1.1, 0.05 );
+			TS_ASSERT_DELTA( pr( 0.25 ), 2.3, 0.05 );
+			pr = prior::inverse_gamma( 1, 1 );
+			TS_ASSERT_DELTA( pr( 0.5 ), 0.5, 0.05 );
+		}
+
+		void testUnif() {
+			auto pr = prior::uniform( -1, 9 );
+			TS_ASSERT_EQUALS( pr( 0 ), 0.1 );
+			TS_ASSERT_EQUALS( pr( 5 ), 0.1 );
+			TS_ASSERT_EQUALS( pr( -2 ), 0 );
+			TS_ASSERT_EQUALS( pr( 10 ), 0 );
 		}
 };
