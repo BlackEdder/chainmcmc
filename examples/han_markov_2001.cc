@@ -57,10 +57,18 @@ int main() {
 		return ll;
 	};
 
-	std::vector<parameter_t> init_pars1 = { 0,0,0 };
-	std::vector<prior_t> priors1 = {};
+	std::vector<parameter_t> init_pars1 = { 3000, 185, 1 };
+	std::vector<prior_t> priors1 = { prior::normal( 3000, 1e6 ),
+		prior::normal( 185, 1e4 ), prior::inverse_gamma( 3.0, 1.0/(2*pow(300,2)) ) };
 
 	auto chain = spawn<Chain>( eng, ll1, init_pars1, priors1 ); 
+
+	send( chain, atom("run"), 100000, true );
+	send( chain, atom("log_weight") );
+	receive( 
+			on( arg_match ) >> []( const double &lw ) { 
+			std::cout << "Weight: " << exp( lw ) << std::endl; } );
+	
 
 	double mean_z = trace::details::mean_v( data_z );
 	likelihood_t ll2 = [&mean_z, &data_z, &data_y]( const std::vector<parameter_t>
