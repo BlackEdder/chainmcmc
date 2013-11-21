@@ -35,9 +35,12 @@ namespace chainmcmc {
 
 		prior_t inverse_gamma( const double &alpha, const double &beta ) {
 			return [&alpha, &beta]( const parameter_t &x ) {
-				return boost::math::pdf( 
+				if (x>=0)
+					return boost::math::pdf( 
 						boost::math::inverse_gamma_distribution<double>( alpha,
 							beta ), x );
+				else
+					return 0.0;
 			};
 		}
 

@@ -53,6 +53,7 @@ class TestPrior : public CxxTest::TestSuite
 			TS_ASSERT_DELTA( pr( 0.25 ), 2.3, 0.05 );
 			pr = prior::inverse_gamma( 1, 1 );
 			TS_ASSERT_DELTA( pr( 0.5 ), 0.5, 0.05 );
+			TS_ASSERT_EQUALS( pr( -0.5 ), 0.0 );
 		}
 
 		void testUnif() {
