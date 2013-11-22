@@ -123,4 +123,21 @@ namespace trace {
 			const std::vector<sample_t> & samples );
 };
 };
+
+template<class T>
+std::ostream& operator<<( std::ostream &out, const std::vector<T> &v ) {
+	std::stringstream s; // Collect output in stringstream for thread safety
+	bool first = true;
+	/*std::cout << state.loglikelihood << ", " << temperature << 
+		", " << state.current_parameter << ": ";*/
+	for ( auto & el : v ) {
+		if (first) {
+			s << el;
+			first = false;
+		} else
+			s	<< "\t" << el;
+	}
+	out << s.str();
+	return out;
+}
 #endif
