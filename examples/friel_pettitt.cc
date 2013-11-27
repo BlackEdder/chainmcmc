@@ -98,10 +98,10 @@ double log_marginal_likelihood( std::mt19937 &eng, const likelihood_t &ll,
 	return sum_ll;
 }
 /**
- * Goal is to implement first example from:
- * Han, Cong, and Bradley P Carlin. “Markov Chain Monte Carlo Methods for Computing Bayes Factors: A Comparative Review.” Journal of the American Statistical Association 96, no. 455 (September 2001): 1122–1132. doi:10.1198/016214501753208780.
+ * Goal is to implement 
  *
- * And test different methods for correct implementation
+	Friel, N., and A. N. Pettitt. 2008. “Marginal Likelihood Estimation via Power Posteriors.” Journal of the Royal Statistical Society: Series B (Statistical Methodology) 70 (3): 589–607. doi:10.1111/j.1467-9868.2007.00650.x.
+ *
  */
 int main() {
 	std::mt19937 eng;
