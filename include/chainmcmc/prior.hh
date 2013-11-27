@@ -23,12 +23,23 @@
 
 #ifndef PRIOR_HH 
 #define PRIOR_HH
+#include<vector>
 #include<functional>
 #include<cmath>
 
 namespace chainmcmc {
 	typedef double parameter_t;
 	typedef std::function<double( const parameter_t )> prior_t;
+
+	/**
+	 * \brief Joint prior, that returns prior probability for a vecetor of parameters
+	 *
+	 * Internally a vector of priors is always converted to a joint prior
+	 * taking the parameters
+	 */
+	typedef std::function<double( const std::vector<parameter_t> 
+			&pars )> joint_prior_t;
+
 	namespace prior {
 		constexpr double pi() { return std::atan2(0,-1); }
 		
@@ -42,6 +53,15 @@ namespace chainmcmc {
 		prior_t inverse_gamma( const double &alpha, const double &beta );
 
 		prior_t uniform( const double &min, const double &max );
+
+		/**
+		 * \brief Convert vector of independent priors into one joint prior
+		 *
+		 * This is simply done by multiplying each prior (since they 
+		 * are independent)
+		 */
+		joint_prior_t convert_into_joint_prior( 
+				std::vector<prior_t>&& priors );
 	};
 };
 #endif
