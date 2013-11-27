@@ -151,49 +151,59 @@ namespace step {
 	}
 
 	State step( std::mt19937 &eng, State && state, const likelihood_t &ll, 
-			const std::vector<prior_t> &priors, 
+			const std::vector<prior_t> &priors, bool adapting,
 			double temperature ) {
+		++state.generation;
+		++state.current_parameter;
+		state.current_parameter = state.current_parameter%state.parameters.size();
+	
+		bool accepted = true;
 		auto proposed_parameters = state.parameters;
-		proposed_parameters[state.current_parameter] = 
-			rparameter( eng, proposed_parameters[state.current_parameter], 
-			state.pss[state.current_parameter].sd	);
-		++state.pss[state.current_parameter].no_tries;
 
-		bool accepted = false;
+		for ( size_t i = 0; i < proposed_parameters.size(); ++i ){
+			proposed_parameters[i] = 
+				rparameter( eng, proposed_parameters[i], 
+						state.pss[i].sd	);
+			++state.pss[i].no_tries;
+
+			if (priors[i](
+						proposed_parameters[i]) == 0) {
+				accepted = false;
+			}
+		}
 		double old_lweight;
 		double proposed_ll;
 
-		if (priors[state.current_parameter](
-					proposed_parameters[state.current_parameter]) == 0)
-			accepted = false;
-		else if (std::isnan( state.loglikelihood )) {
-			accepted = true;
-			proposed_ll = ll( proposed_parameters );
-		} else {
-			proposed_ll = ll( proposed_parameters );
-			old_lweight = mh_log_weight( state.loglikelihood, state.parameters,
-					priors, temperature );
-			if (std::isnan( old_lweight)) {
-				accepted = true;
-			}
-			else {
-				double proposed_lweight = mh_log_weight( proposed_ll, proposed_parameters,
+		if (accepted) {
+			if (std::isnan( state.loglikelihood )) {
+				proposed_ll = ll( proposed_parameters );
+			} else {
+				proposed_ll = ll( proposed_parameters );
+				old_lweight = mh_log_weight( state.loglikelihood, state.parameters,
 						priors, temperature );
-				accepted = accept( eng, old_lweight, proposed_lweight, temperature );
+				if (!std::isnan( old_lweight)) {
+					double proposed_lweight = mh_log_weight( proposed_ll, proposed_parameters,
+							priors, temperature );
+					accepted = accept( eng, old_lweight, proposed_lweight, temperature );
+				}
 			}
 		}
 
 		if (accepted) {
-			++state.pss[state.current_parameter].no_accepts;
+			for ( size_t i = 0; i < proposed_parameters.size(); ++i ) {
+				++state.pss[i].no_accepts;
+			}
+
 			state.loglikelihood = proposed_ll; 
 			state.parameters = proposed_parameters;
 		}
+		if (adapting) {
+			std::uniform_int_distribution<int> runif( 0, proposed_parameters.size()-1 );
+			size_t id = runif( eng ); //%proposed_parameters.size();
+			state.pss[id] =
+				adapt_parameter_sd( std::move( state.pss[id] ) );
+		}
 
-		state.pss[state.current_parameter] =
-			adapt_parameter_sd( std::move( state.pss[state.current_parameter] ) );
-		++state.generation;
-		++state.current_parameter;
-		state.current_parameter = state.current_parameter%state.parameters.size();
 		return state;
 	}
 };
@@ -211,6 +221,9 @@ Chain::Chain( std::mt19937 &engine,
 	state.parameters = parameters;
 	for ( size_t i = 0; i < parameters.size(); ++i )
 		state.pss.push_back( step::ParameterState() );
+	state.pss[0].sd = 100;
+	state.pss[1].sd = 1;
+	state.pss[2].sd = 30000;
 }
 
 void Chain::init()  {
@@ -239,12 +252,23 @@ void Chain::init()  {
 				step();
 			}
 		},
+		on( atom( "no_adapt" ) ) >> [this]() {
+			std::cout << "Sd ";
+			for ( auto & ps : state.pss )
+				std::cout << " " << ps.sd;
+			std::cout << std::endl;
+			adapting = false;
+		},
 		on( atom( "step" ) ) >> [this]() {
 			step();
 		},
 		on( atom("log_weight") ) >> [this]() {
 			// Returns the cold weight
-			return step::mh_log_weight( state.loglikelihood, state.parameters,
+			std::cout << "Sd ";
+			for ( auto & ps : state.pss )
+				std::cout << " " << ps.sd;
+			std::cout << std::endl;
+				return step::mh_log_weight( state.loglikelihood, state.parameters,
 				priors, 1 );
 		},
 		on( atom("temp" ), arg_match ) >> [this]( const double &new_temp ) {
@@ -266,7 +290,7 @@ void Chain::init()  {
 
 void Chain::step()  {
 	state = step::step( rnd_engine, std::move( state ), loglikelihood, priors,
-			temperature );
+			adapting, temperature );
 	if (state.generation%50 == 0 && log_on) {
 		std::stringstream s; // Collect output in stringstream for thread safety
 		bool first = true;

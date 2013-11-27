@@ -229,7 +229,7 @@ class TestChain : public CxxTest::TestSuite
 				return 1;
 			};
 			state = chainmcmc::step::step( eng2, std::move( state ), ll, 
-					{ prior, prior }, 1.0 );
+					{ prior, prior }, true, 1.0 );
 			// Test for:
 			// 	generation increased, current_parameter increased
 			TS_ASSERT_EQUALS( state.generation, 1 );
@@ -238,7 +238,7 @@ class TestChain : public CxxTest::TestSuite
 
 			// Test parameters loop back
 			state = chainmcmc::step::step( eng2, std::move( state ), ll, 
-					{ prior, prior }, 1.0 );
+					{ prior, prior }, true, 1.0 );
 			TS_ASSERT_EQUALS( state.current_parameter, 0 );
 		}
 

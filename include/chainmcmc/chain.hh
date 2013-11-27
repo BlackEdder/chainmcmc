@@ -116,7 +116,7 @@ namespace step {
 	};
 
 	State step( std::mt19937 &eng, State && state, const likelihood_t &ll, 
-			const std::vector<prior_t> &priors, 
+			const std::vector<prior_t> &priors, bool adapting = true, 
 			double temperature = 1 );
 };
 
@@ -143,6 +143,7 @@ class Chain : public event_based_actor {
 		std::vector<prior_t> priors;
 
 		bool log_on = false;
+		bool adapting = true;
 
 		actor_ptr logger = spawn<Logger>( std::cout );
 

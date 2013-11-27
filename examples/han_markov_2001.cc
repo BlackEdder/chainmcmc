@@ -40,37 +40,92 @@ double accept_prob( const std::vector<parameter_t> &new_pars,
 		const std::vector<prior_t> &priors ) {
 	double alpha = exp( step::mh_log_weight( ll, new_pars, priors, 1 ) -
 			step::mh_log_weight( ll, old_pars, priors, 1 ) );
+	//std::cout << alpha << std::endl;
 	alpha = std::min( 1.0, alpha );
+	//std::cout << "BLA: " << alpha << std::endl;
 	return alpha;
 }
 
-double marginal_likelihood( const likelihood_t &ll, 
+double log_marginal_likelihood_vit( const likelihood_t &ll, 
 		const std::vector<prior_t> &priors, 
-		const std::vector<std::vector<parameter_t> > &tr ) {
+		const std::vector<std::vector<parameter_t> > &tr,
+		const std::vector<double> &theta_var2 ) {
 	std::mt19937 eng;
 	auto theta_star = trace::means( tr );
 	auto theta_var = trace::variances_sample( tr );
-	size_t no_samples = 1000;
+	size_t no_samples = 2000;
 	double numer = 0;
 	double denom = 0;
+	std::cout << "Star: " << theta_star << std::endl;
+	std::cout << "Var:  " << theta_var << std::endl;
+	for (size_t i = 0; i < theta_star.size(); ++i) {
+		theta_star[i] -= sqrt(theta_var[i]);
+	}
+	std::cout << "Star: " << theta_star << std::endl;
+
+	for (size_t i = 0; i < no_samples; ++i) {
+		double prod_numer = 1;
+		double prod_denom = 1;
+		for (size_t j = 0; j < theta_star.size(); ++j) {
+			auto theta_g = theta_star;
+			theta_g[j] = tr[ tr.size()-1-i ][j];
+			prod_numer *= prior::normal(theta_star[j], (theta_var[j]))(theta_g[j]);
+			prod_numer *= accept_prob( theta_star, theta_g, ll, priors );
+			double sum_denom = 0;
+			for (size_t m = 0; m < 100; ++m) {
+				auto theta_g = theta_star;
+				std::normal_distribution<double> rnorm( 0, sqrt(theta_var[j]) );
+				theta_g[j] += rnorm( eng );
+				sum_denom += accept_prob( theta_g, theta_star, ll, priors );
+			}
+			prod_denom *= sum_denom/1000.0;
+		}
+		numer += prod_numer;
+		denom += prod_denom;
+	}
+	std::cout << numer << " / " << denom << std::endl;
+	return step::mh_log_weight( ll, theta_star, priors, 1 )-log(1.0/no_samples*numer/denom);
+}
+	
+double log_marginal_likelihood( const likelihood_t &ll, 
+		const std::vector<prior_t> &priors, 
+		const std::vector<std::vector<parameter_t> > &tr,
+		const std::vector<double> &theta_var2 ) {
+	std::mt19937 eng;
+	auto theta_star = trace::means( tr );
+	auto theta_var = trace::variances_sample( tr );
+	size_t no_samples = 2000;
+	double numer = 0;
+	double denom = 0;
+	std::cout << "Star: " << theta_star << std::endl;
+	std::cout << "Var:  " << theta_var << std::endl;
+	for (size_t i = 0; i < theta_star.size(); ++i) {
+		theta_star[i] -= sqrt(theta_var[i]);
+	}
+	std::cout << "Star: " << theta_star << std::endl;
 	for (size_t i = 0; i < no_samples; ++i) {
 		auto theta_g = tr[ tr.size()-1-i ];
-		double tmp = accept_prob( theta_g, theta_star, ll, priors );
+		double tmp = accept_prob( theta_star, theta_g, ll, priors );
 		for ( size_t j = 0; j < theta_star.size(); ++j )
-			tmp *= dnorm( theta_g[j], theta_star[j], theta_var[j], false );
+			tmp *= prior::normal(theta_star[j], sqrt(theta_var[j]))(theta_g[j]);
+			//tmp *= dnorm( theta_g[j], theta_star[j], sqrt(theta_var[j]), false );
 		numer += tmp;
 
 		theta_g = theta_star;
 		for ( size_t j = 0; j < theta_star.size(); ++j ) {
-			std::normal_distribution<double> rnorm( 0, theta_var[j] );
+			std::normal_distribution<double> rnorm( 0, sqrt(theta_var[j]) );
 			theta_g[j] += rnorm( eng );
 		}
 
-		denom += accept_prob( theta_star, theta_g, ll, priors );
+		denom += accept_prob( theta_g, theta_star, ll, priors );
 	}
-	double lpi = log( numer/denom );
 
-	return exp(step::mh_log_weight( ll, theta_star, priors, 1 )-lpi);
+	std::cout << numer << "\tnumer" << std::endl;
+	std::cout << denom << "\tdenom" << std::endl;
+	double lpi = log( numer ) - log( denom );
+	std::cout << step::mh_log_weight( ll, theta_star, priors, 1 ) << std::endl; 
+
+	return step::mh_log_weight( ll, theta_star, priors, 1 )-lpi;
 }
 
 /**
@@ -107,7 +162,8 @@ int main() {
 	auto logger = spawn<Logger>( out );
 	send( chain, atom("logger"), logger );
 
-	send( chain, atom("run"), 1000000, false );
+	send( chain, atom("run"), 10000000, false );
+	send( chain, atom("no_adapt") );
 	send( chain, atom("run"), 1000000, true );
 	send( chain, atom("log_weight") );
 	receive( 
@@ -118,7 +174,8 @@ int main() {
 	auto tr1 = trace::read_trace_per_sample( out );
 
 	// Calculate marginal likelihood
-	auto ml1 = marginal_likelihood( ll1, priors1, tr1 );
+	auto ml1 = log_marginal_likelihood_vit( ll1, priors1, tr1, 
+			{pow(2902.26,2), pow(67.7891,2), pow(487094,2)} );
 	std::cout << ml1 << std::endl;
 
 	// Second model:
@@ -139,7 +196,8 @@ int main() {
 	logger = spawn<Logger>( out );
 	send( chain, atom("logger"), logger );
 
-	send( chain, atom("run"), 1000000, false );
+	send( chain, atom("run"), 10000000, false );
+	send( chain, atom("no_adapt") );
 	send( chain, atom("run"), 1000000, true );
 	send( chain, atom("log_weight") );
 	receive( 
@@ -153,9 +211,11 @@ int main() {
 	auto means_tr2 = trace::means( tr2 );
 	for (size_t i = 0; i < means_tr1.size(); ++i)
 		std::cout << means_tr1[i] << " " << means_tr2[i] << std::endl;
-	auto ml2 = marginal_likelihood( ll2, priors1, tr2 );
+	auto ml2 = log_marginal_likelihood_vit( ll2, priors1, tr2, 
+			{pow(241.036,2), pow(3.13498,2), pow(59768.6,2)} );
 	std::cout << ml2 << std::endl;
-	std::cout << ml2/ml1 << " " << ml1/ml2 << std::endl;
+	std::cout << ml2-ml1 << " " << ml1-ml2 << std::endl;
+	std::cout << exp(ml2-ml1) << " " << exp(ml1-ml2) << std::endl;
 
 	return 0;
 }
