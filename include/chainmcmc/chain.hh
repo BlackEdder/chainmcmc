@@ -29,6 +29,7 @@
 #include <cppa/cppa.hpp>
 
 #include "chainmcmc/logger.hh"
+#include "chainmcmc/prior.hh"
 
 namespace chainmcmc {
 using namespace cppa;
@@ -50,9 +51,7 @@ using namespace cppa;
  * data
  */
 
-typedef double parameter_t;
 typedef std::function<double( const std::vector<parameter_t> )> likelihood_t;
-typedef std::function<double( const parameter_t )> prior_t;
 
 namespace step {
 
@@ -117,7 +116,7 @@ namespace step {
 	};
 
 	State step( std::mt19937 &eng, State && state, const likelihood_t &ll, 
-			const std::vector<prior_t> &priors, 
+			const std::vector<prior_t> &priors, bool adapting = true, 
 			double temperature = 1 );
 };
 
@@ -144,6 +143,7 @@ class Chain : public event_based_actor {
 		std::vector<prior_t> priors;
 
 		bool log_on = false;
+		bool adapting = true;
 
 		actor_ptr logger = spawn<Logger>( std::cout );
 
