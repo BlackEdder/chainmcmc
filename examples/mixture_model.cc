@@ -2,6 +2,15 @@
 
 using namespace chainmcmc;
 
+/* Here we add the mixture model discussed in section 3.2 of:
+ *
+ 		Carlin, Bradley P., and Siddhartha Chib. 1995. “Bayesian Model Choice via Markov Chain Monte Carlo Methods.” Journal of the Royal Statistical Society. Series B (Methodological) 57 (3) (January 1): 473–484.
+ * 
+ * This allows us to test our results versus previous results and make sure we 
+ * didn't make any mistakes.
+ * Table 3. in that artikel shows their findings
+ */
+
 int main() {
 	// Data
 	std::vector<double> velocities = { 
