@@ -199,7 +199,7 @@ Chain::Chain( std::mt19937 &engine,
 : rnd_engine( engine ),
 	temperature( temperature ),
 	loglikelihood( loglikelihood ),
-	joint_prior( prior::convert_into_joint_prior( priors ) )
+	joint_prior( priors )
 {
 	state.parameters = parameters;
 	for ( size_t i = 0; i < parameters.size(); ++i )
@@ -308,7 +308,7 @@ ChainController::ChainController( const likelihood_t &loglikelihood,
 		const std::vector<prior_t> &priors, size_t warm_up, size_t total_steps,
 		size_t no_chains, std::ostream &out ) 
 	: no_chains( no_chains ), warm_up( warm_up ) {
-		joint_prior_t joint_prior = prior::convert_into_joint_prior( std::move(priors) );
+		joint_prior_t joint_prior( priors );
 
 		setup( loglikelihood, {parameters}, joint_prior, no_chains, out );
 
@@ -321,7 +321,7 @@ ChainController::ChainController( const likelihood_t &loglikelihood,
 		const std::vector<prior_t> &priors, size_t warm_up, size_t total_steps,
 		size_t no_chains, std::ostream &out ) : no_chains( no_chains ), warm_up( warm_up ) {
 
-	joint_prior_t joint_prior = prior::convert_into_joint_prior( std::move(priors) );
+	joint_prior_t joint_prior( priors );
 	setup( loglikelihood, pars_v, joint_prior, no_chains, out );
 
 	run( total_steps );

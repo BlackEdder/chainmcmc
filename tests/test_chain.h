@@ -78,25 +78,26 @@ class TestChain : public CxxTest::TestSuite
 			prior_t prior = []( const parameter_t &par ) {
 				return 0;
 			};
-			auto jp = prior::convert_into_joint_prior( {prior} );
+			std::cout << "Here" << std::endl;
 			TS_ASSERT( 
-					!accept( eng2, ll, old_pars, new_pars, prior::convert_into_joint_prior( { []( const parameter_t &par ) {
+					!accept( eng2, ll, old_pars, new_pars, { []( const parameter_t &par ) {
 				return 0;
-			} } ) ) ); 
+			} } ) ); 
 			TS_ASSERT_EQUALS( count, 0 ); // Make sure likelihood is not called when prior is zero
+			std::cout << "Here 2" << std::endl;
 			prior = []( const parameter_t &par ) {
 				return 1;
 			};
 			TS_ASSERT( accept( eng2, ll, old_pars, new_pars,
-						prior::convert_into_joint_prior( { prior }) ) );
+						{ prior } ) );
 			count = 0;
 
 			TS_ASSERT( !accept( eng2, ll, old_pars, new_pars, 
-			prior::convert_into_joint_prior( { []( const parameter_t &par ) {
+			{ []( const parameter_t &par ) {
 				if (par == 1.1) 
 					return 0;
 				else return 1;
-			} } ) ) );
+			} } ) );
 			TS_ASSERT_EQUALS( count, 0 );
 			
 			eng1.seed( 2 ); eng2.seed( 2 );
@@ -104,7 +105,7 @@ class TestChain : public CxxTest::TestSuite
 			for ( size_t i = 0; i<10; ++i ) {
 				double ratio = 1.0/1.1;
 				bool result = accept( eng2, ll, new_pars, old_pars, 
-						prior::convert_into_joint_prior( { prior } ) );
+						{ prior, prior } );
 				if (result)
 					++true_count;
 				std::uniform_real_distribution<double> unif(0,1);
@@ -118,7 +119,7 @@ class TestChain : public CxxTest::TestSuite
 			for ( size_t i = 0; i<10; ++i ) {
 				double ratio = pow(1.0/1.1, 1/1.5 );
 				bool result = accept( eng2, ll, new_pars, old_pars, 
-						prior::convert_into_joint_prior( { prior } ), 1.5 );
+						{ prior }, 1.5 );
 				if (result)
 					++true_count;
 				std::uniform_real_distribution<double> unif(0,1);
@@ -134,7 +135,7 @@ class TestChain : public CxxTest::TestSuite
 						return NAN;
 					else
 						return 1.0;
-				}, old_pars, new_pars, prior::convert_into_joint_prior( { prior } ) ) );
+				}, old_pars, new_pars, { prior } ) );
 			// Never accept if the second solution is nan
 			TS_ASSERT( 
 				!accept( eng2, []( const std::vector<parameter_t> & pars ) -> double {
@@ -142,7 +143,7 @@ class TestChain : public CxxTest::TestSuite
 						return NAN;
 					else
 						return log(0);
-				}, new_pars, old_pars, prior::convert_into_joint_prior( { prior } ) ) );
+				}, new_pars, old_pars, { prior } ) );
 
 			TS_ASSERT( 
 				!accept( eng2, []( const std::vector<parameter_t> & pars ) -> double {
@@ -150,7 +151,7 @@ class TestChain : public CxxTest::TestSuite
 						return NAN;
 					else
 						return -log(0);
-				}, new_pars, old_pars, prior::convert_into_joint_prior( { prior } ) ) );
+				}, new_pars, old_pars, { prior } ) );
 
 			TS_ASSERT( 
 				accept( eng2, []( const std::vector<parameter_t> & pars ) -> double {
@@ -158,42 +159,42 @@ class TestChain : public CxxTest::TestSuite
 						return log(0);
 					else
 						return 1.0;
-				}, old_pars, new_pars, prior::convert_into_joint_prior( { prior } ) ) );
+				}, old_pars, new_pars, { prior } ) );
 			TS_ASSERT( 
 				!accept( eng2, []( const std::vector<parameter_t> & pars ) -> double {
 					if (pars[0] == 1.0) 
 						return -log(0);
 					else
 						return 1.0;
-				}, old_pars, new_pars, jp ) );
+				}, old_pars, new_pars, { prior } ) );
 			TS_ASSERT( 
 				!accept( eng2, []( const std::vector<parameter_t> & pars ) -> double {
 					if (pars[0] == 1.0) 
 						return 1.0;
 					else
 						return log(0);
-				}, old_pars, new_pars, jp ) );
+				}, old_pars, new_pars, { prior } ) );
 			TS_ASSERT( 
 				accept( eng2, []( const std::vector<parameter_t> & pars ) -> double {
 					if (pars[0] == 1.0) 
 						return 1.0;
 					else
 						return -log(0);
-				}, old_pars, new_pars, jp ) );
+				}, old_pars, new_pars, { prior } ) );
 			TS_ASSERT( 
 				!accept( eng2, []( const std::vector<parameter_t> & pars ) -> double {
 					if (pars[0] == 1.0) 
 						return -log(0);
 					else
 						return log(0);
-				}, old_pars, new_pars, jp ) );
+				}, old_pars, new_pars, { prior } ) );
 			TS_ASSERT( 
 				accept( eng2, []( const std::vector<parameter_t> & pars ) -> double {
 					if (pars[0] == 1.0) 
 						return log(0);
 					else
 						return -log(0);
-				}, old_pars, new_pars, jp, 1.2 ) );
+				}, old_pars, new_pars, { prior }, 1.2 ) );
 		}
 
 		void testRandomParameter() {
@@ -233,7 +234,7 @@ class TestChain : public CxxTest::TestSuite
 				return 1;
 			};
 			state = chainmcmc::step::step( eng2, std::move( state ), ll, 
-					prior::convert_into_joint_prior({ prior, prior }), true, 1.0 );
+					{ prior, prior }, true, 1.0 );
 			// Test for:
 			// 	generation increased, current_parameter increased
 			TS_ASSERT_EQUALS( state.generation, 1 );
@@ -242,7 +243,7 @@ class TestChain : public CxxTest::TestSuite
 
 			// Test parameters loop back
 			state = chainmcmc::step::step( eng2, std::move( state ), ll, 
-					prior::convert_into_joint_prior({ prior, prior }), true, 1.0 );
+					{ prior, prior }, true, 1.0 );
 			TS_ASSERT_EQUALS( state.current_parameter, 0 );
 		}
 

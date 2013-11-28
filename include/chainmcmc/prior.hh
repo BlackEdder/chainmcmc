@@ -26,19 +26,66 @@
 #include<vector>
 #include<functional>
 #include<cmath>
+#include<iostream>
 
 namespace chainmcmc {
 	typedef double parameter_t;
 	typedef std::function<double( const parameter_t )> prior_t;
 
 	/**
-	 * \brief Joint prior, that returns prior probability for a vecetor of parameters
+	 * \brief Joint prior, that returns prior probability for a vector of parameters
 	 *
 	 * Internally a vector of priors is always converted to a joint prior
 	 * taking the parameters
 	 */
-	typedef std::function<double( const std::vector<parameter_t> 
-			&pars )> joint_prior_t;
+	class joint_prior_t {
+		public:
+			joint_prior_t() {}
+			joint_prior_t( std::function<double( const std::vector<parameter_t> 
+						&pars )> func ) :
+				joint_func( func ) {}
+
+			joint_prior_t( const std::vector<prior_t> &priors )
+			{
+				joint_func =  [&priors]( const std::vector<parameter_t> &pars ) {
+					double prob = 1;
+					for ( int i = 0; i < pars.size(); ++i ) {
+						double pr = priors[i](pars[i]);
+						if (pr == 0)
+							return 0.0;
+						else
+							prob *= pr;
+					}
+					return prob;
+				};
+
+			}
+
+			joint_prior_t( std::initializer_list<prior_t> args ) {
+				joint_func =  [args]( const std::vector<parameter_t> &pars ) {
+					double prob = 1;
+					auto it = args.begin();
+					for ( int i = 0; i < pars.size(); ++i ) {
+						double pr = (*it)(pars[i]);
+						if (pr == 0)
+							return 0.0;
+						else
+							prob *= pr;
+						++it;
+					}
+					return prob;
+				};
+			}
+
+			double operator()( const std::vector<parameter_t> &pars ) const {
+				return joint_func( pars );
+			}
+		private:
+			std::function<double( const std::vector<parameter_t> 
+					&pars )> joint_func;
+	};
+	//typedef std::function<double( const std::vector<parameter_t> 
+	//		&pars )> joint_prior_t;
 
 	namespace prior {
 		constexpr double pi() { return std::atan2(0,-1); }
@@ -54,14 +101,6 @@ namespace chainmcmc {
 
 		prior_t uniform( const double &min, const double &max );
 
-		/**
-		 * \brief Convert vector of independent priors into one joint prior
-		 *
-		 * This is simply done by multiplying each prior (since they 
-		 * are independent)
-		 */
-		joint_prior_t convert_into_joint_prior( 
-				const std::vector<prior_t> &priors );
-	};
+};
 };
 #endif
