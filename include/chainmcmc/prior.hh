@@ -47,7 +47,7 @@ namespace chainmcmc {
 			joint_prior_t( const std::function<double( const std::vector<parameter_t> 
 						&pars )> &func );
 			joint_prior_t( const std::vector<prior_t> &priors );
-			joint_prior_t( std::initializer_list<prior_t> args );
+			joint_prior_t( const std::initializer_list<prior_t> &args );
 			double operator()( const std::vector<parameter_t> &pars ) const;
 
 		private:

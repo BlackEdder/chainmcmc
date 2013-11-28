@@ -78,13 +78,11 @@ class TestChain : public CxxTest::TestSuite
 			prior_t prior = []( const parameter_t &par ) {
 				return 0;
 			};
-			std::cout << "Here" << std::endl;
 			TS_ASSERT( 
 					!accept( eng2, ll, old_pars, new_pars, { []( const parameter_t &par ) {
 				return 0;
 			} } ) ); 
 			TS_ASSERT_EQUALS( count, 0 ); // Make sure likelihood is not called when prior is zero
-			std::cout << "Here 2" << std::endl;
 			prior = []( const parameter_t &par ) {
 				return 1;
 			};

@@ -50,8 +50,8 @@ namespace chainmcmc {
 		};
 	}
 
-	joint_prior_t::joint_prior_t( std::initializer_list<prior_t> args ) {
-		joint_func =  [args]( const std::vector<parameter_t> &pars ) {
+	joint_prior_t::joint_prior_t( const std::initializer_list<prior_t> &args ) {
+		joint_func =  [&args]( const std::vector<parameter_t> &pars ) {
 			double prob = 1;
 			auto it = args.begin();
 			for ( int i = 0; i < pars.size(); ++i ) {
