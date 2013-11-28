@@ -57,11 +57,11 @@ namespace step {
 
 	double mh_log_weight( const likelihood_t &ll,
 			const std::vector<parameter_t> &pars,
-			const std::vector<prior_t> &priors, const double &temperature );
+			const joint_prior_t &joint_prior, const double &temperature );
 
 	double mh_log_weight( const double &log_likelihood,
 			const std::vector<parameter_t> &pars,
-			const std::vector<prior_t> &priors, 
+			const joint_prior_t &joint_prior, 
 			const double &temperature );
 
 	bool accept( std::mt19937 &eng, 
@@ -73,12 +73,12 @@ namespace step {
 			const likelihood_t &ll, const double &old_ll,
 			const std::vector<parameter_t> &old_pars,
 			const std::vector<parameter_t> &new_pars,
-			const std::vector<prior_t> &priors, double temperature = 1 );	
+			const joint_prior_t &joint_prior, double temperature = 1 );	
 
 	bool accept( std::mt19937 &eng, const likelihood_t &ll, 
 			const std::vector<parameter_t> &old_pars,
 			const std::vector<parameter_t> &new_pars,
-			const std::vector<prior_t> &priors, double temperature = 1 );
+			const joint_prior_t &joint_prior, double temperature = 1 );
 
 	parameter_t rparameter( std::mt19937 &eng, const parameter_t &par, 
 			const double &sd );
@@ -116,7 +116,7 @@ namespace step {
 	};
 
 	State step( std::mt19937 &eng, State && state, const likelihood_t &ll, 
-			const std::vector<prior_t> &priors, bool adapting = true, 
+			const joint_prior_t &joint_prior, bool adapting = true, 
 			double temperature = 1 );
 };
 
@@ -133,6 +133,13 @@ class Chain : public event_based_actor {
 		const std::vector<parameter_t> &parameters,
 		const std::vector<prior_t> &priors,
 		const double & temperature = 1 );
+
+		Chain(  std::mt19937 &engine, 
+		const likelihood_t &loglikelihood, 
+		const std::vector<parameter_t> &parameters,
+		const joint_prior_t &joint_prior,
+		const double & temperature = 1 );
+
 		void init();
 
 	protected:
@@ -140,7 +147,7 @@ class Chain : public event_based_actor {
 		step::State state;
 		double temperature = 1;
 		const likelihood_t loglikelihood;
-		std::vector<prior_t> priors;
+		joint_prior_t joint_prior;
 
 		bool log_on = false;
 		bool adapting = true;
@@ -216,7 +223,7 @@ class ChainController {
 
 		void setup( const likelihood_t &loglikelihood, 
 				const std::vector<std::vector<parameter_t> > &pars_v,
-				const std::vector<prior_t> &priors,
+				const joint_prior_t &joint_prior,
 				size_t no_chains, std::ostream &out );
 		void run(const size_t total_steps);
 };

@@ -55,7 +55,7 @@ namespace chainmcmc {
 		}
 
 		joint_prior_t convert_into_joint_prior( 
-				std::vector<prior_t>&& priors ) {
+				const std::vector<prior_t> &priors ) {
 			return [&priors]( const std::vector<parameter_t> &pars ) {
 				double prob = 1;
 				for ( size_t i = 0; i < pars.size(); ++i ) {

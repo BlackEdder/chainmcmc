@@ -61,7 +61,7 @@ namespace chainmcmc {
 		 * are independent)
 		 */
 		joint_prior_t convert_into_joint_prior( 
-				std::vector<prior_t>&& priors );
+				const std::vector<prior_t> &priors );
 	};
 };
 #endif
