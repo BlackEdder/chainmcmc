@@ -73,13 +73,13 @@ namespace chainmcmc {
 	namespace prior {
 
 		prior_t normal( const double &mu, const double &sigma ) {
-			return [&mu, &sigma]( const parameter_t &x ) {
+			return [mu, sigma]( const parameter_t &x ) {
 				return 1.0/(sigma*sqrt(2.0*pi()))*exp(-pow(x-mu,2)/(2*pow(sigma,2)));
 			};
 		}
 
 		prior_t inverse_gamma( const double &alpha, const double &beta ) {
-			return [&alpha, &beta]( const parameter_t &x ) {
+			return [alpha, beta]( const parameter_t &x ) {
 				if (x>=0)
 					return boost::math::pdf( 
 						boost::math::inverse_gamma_distribution<double>( alpha,
@@ -91,12 +91,47 @@ namespace chainmcmc {
 
 		prior_t uniform( const double &min, const double &max ) {
 			static double prob = 1.0/(max-min); // No need to calculate everytime
-			return [&min, &max]( const double &x ) {
+			return [min, max]( const double &x ) {
 				if (x>=min && x<=max)
 					return prob;
 				else
 					return 0.0;
 			};
+		}
+
+		joint_prior_t dirichlet( const std::vector<double> &alphas ) {
+			// Calculate weight once.
+			double weight = 1;
+			double sum_alphas = 0;
+			for ( auto & alpha : alphas ) {
+				weight /= boost::math::tgamma( alpha ); 
+				sum_alphas += alpha;
+			}
+			weight *= boost::math::tgamma( sum_alphas );
+
+
+			return joint_prior_t( [alphas, weight]( 
+						const std::vector<parameter_t> &pars ) {
+				if (alphas.size()-1 != pars.size())
+					return 0.0;
+				double sum = 0;
+				for ( auto &par : pars ) {
+					if (par<0 || par>1)
+						return 0.0;
+					sum += par;
+				}
+				if (sum>1)
+					return 0.0;
+
+				double prob = 1.0;
+				for ( size_t i = 0; i < alphas.size(); ++i ) {
+					if ( i<pars.size() )
+						prob *= pow(pars[i],alphas[i]-1);
+					else
+						prob *= pow( 1-sum, alphas[i]-1);
+				}
+				return prob*weight;
+			} );
 		}
 	};
 };

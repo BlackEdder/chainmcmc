@@ -71,6 +71,10 @@ namespace chainmcmc {
 		prior_t inverse_gamma( const double &alpha, const double &beta );
 
 		prior_t uniform( const double &min, const double &max );
+		/**
+		 * \brief Probability density function of a dirichlet distribution
+		 */
+		joint_prior_t dirichlet( const std::vector<double> &alpha );
 
 };
 };
