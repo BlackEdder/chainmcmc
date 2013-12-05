@@ -23,12 +23,41 @@
 
 #ifndef PRIOR_HH 
 #define PRIOR_HH
+#include<vector>
 #include<functional>
 #include<cmath>
+#include<iostream>
 
 namespace chainmcmc {
 	typedef double parameter_t;
 	typedef std::function<double( const parameter_t )> prior_t;
+
+	/**
+	 * \brief Joint prior, that returns prior probability for a vector of parameters
+	 *
+	 * Internally a vector of priors is always converted to a joint prior
+	 * taking the parameters
+	 *
+	 * Is defined as separate class so we can easily implicetly convert between
+	 * vectors of priors and a joint_prior
+	 */
+	class joint_prior_t {
+		public:
+			joint_prior_t();
+			joint_prior_t( const std::function<double( const std::vector<parameter_t> 
+						&pars )> &func );
+			joint_prior_t( const std::vector<prior_t> &priors );
+			joint_prior_t( const std::initializer_list<prior_t> &args );
+			double operator()( const std::vector<parameter_t> &pars ) const;
+
+		private:
+			std::function<double( const std::vector<parameter_t> 
+					&pars )> joint_func;
+	};
+
+	//typedef std::function<double( const std::vector<parameter_t> 
+	//		&pars )> joint_prior_t;
+
 	namespace prior {
 		constexpr double pi() { return std::atan2(0,-1); }
 		
@@ -42,6 +71,11 @@ namespace chainmcmc {
 		prior_t inverse_gamma( const double &alpha, const double &beta );
 
 		prior_t uniform( const double &min, const double &max );
-	};
+		/**
+		 * \brief Probability density function of a dirichlet distribution
+		 */
+		joint_prior_t dirichlet( const std::vector<double> &alpha );
+
+};
 };
 #endif

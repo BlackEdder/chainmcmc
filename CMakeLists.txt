@@ -40,6 +40,7 @@ install (FILES include/chainmcmc/chainmcmc.hh
 	include/chainmcmc/file.hh
 	include/chainmcmc/trace.hh
 	include/chainmcmc/logger.hh
+	include/chainmcmc/prior.hh
  	DESTINATION include/chainmcmc)
 
 #Documentation

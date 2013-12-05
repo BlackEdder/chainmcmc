@@ -86,7 +86,8 @@ class TestChain : public CxxTest::TestSuite
 			prior = []( const parameter_t &par ) {
 				return 1;
 			};
-			TS_ASSERT( accept( eng2, ll, old_pars, new_pars, { prior } ) );
+			TS_ASSERT( accept( eng2, ll, old_pars, new_pars,
+						{ prior } ) );
 			count = 0;
 
 			TS_ASSERT( !accept( eng2, ll, old_pars, new_pars, 
@@ -101,7 +102,8 @@ class TestChain : public CxxTest::TestSuite
 			size_t true_count = 0;
 			for ( size_t i = 0; i<10; ++i ) {
 				double ratio = 1.0/1.1;
-				bool result = accept( eng2, ll, new_pars, old_pars, { prior } );
+				bool result = accept( eng2, ll, new_pars, old_pars, 
+						{ prior, prior } );
 				if (result)
 					++true_count;
 				std::uniform_real_distribution<double> unif(0,1);
@@ -114,7 +116,8 @@ class TestChain : public CxxTest::TestSuite
 			true_count = 0;
 			for ( size_t i = 0; i<10; ++i ) {
 				double ratio = pow(1.0/1.1, 1/1.5 );
-				bool result = accept( eng2, ll, new_pars, old_pars, { prior }, 1.5 );
+				bool result = accept( eng2, ll, new_pars, old_pars, 
+						{ prior }, 1.5 );
 				if (result)
 					++true_count;
 				std::uniform_real_distribution<double> unif(0,1);

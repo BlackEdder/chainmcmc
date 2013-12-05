@@ -63,4 +63,17 @@ class TestPrior : public CxxTest::TestSuite
 			TS_ASSERT_EQUALS( pr( -2 ), 0 );
 			TS_ASSERT_EQUALS( pr( 10 ), 0 );
 		}
+
+		void testDirichlet() {
+			// Proper values are taken from Mathematica
+			auto jp = prior::dirichlet( {2,3,2} );
+			TS_ASSERT_EQUALS( 0, jp({ 0.5, 0.6 }) );
+			TS_ASSERT_EQUALS( 0, jp({ -0.5, 0.6 }) );
+			TS_ASSERT_EQUALS( 0, jp({ 0.5, -0.3 }) );
+
+			TS_ASSERT_DELTA( 3.24, jp({ 0.5, 0.3 }), 0.01 );
+			jp = prior::dirichlet( {2,1,2} );
+			TS_ASSERT_DELTA( 2.4, jp({ 0.5, 0.3 }), 0.01 );
+			TS_ASSERT_DELTA( 1.44, jp({ 0.3, 0.5 }), 0.01 );
+		}
 };

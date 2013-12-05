@@ -26,6 +26,16 @@
 #include<iostream>
 
 namespace file_helpers {
+	bool file_exists(const std::string& name) {
+		std::ifstream f(name.c_str());
+		if (f.good()) {
+			f.close();
+			return true;
+		} else {
+			f.close();
+			return false;
+		}   
+	}
 	void move_last_lines( std::istream& fin, const size_t n ) {
 		fin.seekg( 0,std::ios_base::end);
 		if (n!=0) { 

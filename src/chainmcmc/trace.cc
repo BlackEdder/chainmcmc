@@ -81,7 +81,12 @@ namespace chainmcmc {
 			const size_t &no, const std::string & fname, const size_t tail ) {
 		std::vector<std::vector<parameter_t> > rnd_samples;
 		std::ifstream infile;
-		infile.open( fname );
+		if (file_helpers::file_exists( fname ))
+			infile.open( fname );
+		else {
+			std::cerr << "File does not exist: " << fname << std::endl;
+			throw;
+		}
 
 		auto samples = read_trace_per_sample( infile, tail );
 	
