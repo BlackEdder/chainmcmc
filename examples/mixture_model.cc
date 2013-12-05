@@ -31,13 +31,21 @@ int main() {
 	
 	// Setup likelihood (can probably just depend on length of pars to work out number of mixtures)
 	likelihood_t ll = [&velocities]( const std::vector<parameter_t> &pars )  {
-		// pars consinsts of parameters for each mixture, 
+		// pars consists of parameters for each mixture, 
 		// with each mixture being represented by mu, weight
-		// First parameter gives the sigma for the all mixtures
+		// First parameter gives the sigma for all mixtures
+		//
+		// The last weight is 1-sum other weights
 		std::vector<prior_t> mixtures;
+		double sum_weight = 0;
 		for ( size_t i = 1; i < velocities.size(); i += 2 ) {
-			mixtures.push_back( [&pars, &i]( const parameter_t &v ) {
-				return pars[i+1]*prior::normal( pars[i], pars[0] )( v );
+			mixtures.push_back( [&pars, &i, &sum_weight]( const parameter_t &v ) {
+					if (i+1==pars.size())
+						return (1.0-sum_weight)*prior::normal( pars[i], pars[0] )( v );
+					else {
+						sum_weight += pars[i+1];
+						return pars[i+1]*prior::normal( pars[i], pars[0] )( v );
+					}
 			} );
 		}
 		double myll = 0;
