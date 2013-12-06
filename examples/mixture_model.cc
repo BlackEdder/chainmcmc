@@ -57,8 +57,11 @@ joint_prior_t convert_to_joint_prior( const std::vector<double> & init ) {
 		for ( size_t i = 0; i < dim; ++i ) {
 			pr *= pr_means[i]( pars[(i*2)+1] ); 
 
-			if ((i*2)+2<pars.size())
+			if ((i*2)+2<pars.size()) {
+				if (pars[(i*2)+1]>pars[(i*2)+3]) // Keep mixture means ordered/sorted
+					return 0.0;
 				par_alphas.push_back( pars[ (i*2)+2 ] );
+			}
 		}
 
 		pr *= pr_dir( par_alphas );
@@ -131,14 +134,17 @@ int main() {
 				sum += n( v );
 			}
 			//std::cout << v << " " << sum << " " << myll << std::endl;
-			myll += log( sum );
+			if ( sum == 0 )
+				myll -= std::numeric_limits<double>::max()/1000.0;
+			else 
+				myll += log( sum );
 		}
 		return myll;
 	};
 
 	std::mt19937 eng;
 
-	auto chain = spawn<Chain>( eng, ll, init_pars2, jp2 );
+	auto chain = spawn<Chain>( eng, ll, init_pars1, jp1 );
 	std::stringstream out;
 	auto logger = spawn<Logger>( out );
 	send( chain, atom("logger"), logger );
