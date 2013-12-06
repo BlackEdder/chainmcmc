@@ -11,6 +11,64 @@ using namespace chainmcmc;
  * Table 3. in that artikel shows their findings
  */
 
+joint_prior_t convert_to_joint_prior( const std::vector<double> & init ) {
+	// pars consists of parameters for each mixture, 
+	// with each mixture being represented by mu, weight
+	// First parameter gives the sigma for all mixtures
+	//
+	// The last weight is 1-sum other weights
+	
+
+	double alpha = 2+pow( init[1], 2 )/pow( init[2], 2 );
+	double beta = init[1]+pow( init[1], 3 )/pow( init[2], 2 );
+	prior_t pr_var = prior::inverse_gamma( alpha, beta );
+
+	std::vector<prior_t> pr_means;
+	for ( size_t i = 0; i < init[0]; ++i ) {
+		pr_means.push_back( prior::normal( init[ (i*2)+3 ], init[ (i*2)+4 ] ) );
+	}
+
+	// Dir for the weights
+	std::vector<double> alphas( init[0] );
+	double sum_alphas = 1;
+	alphas[0] = init[ 3+2*init[0] ]*sum_alphas;
+	size_t j = 1;
+	for ( size_t i = 5+2*init[0]; i < init.size(); i += 2 ) {
+		alphas[j] = init[i]*sum_alphas;
+		++j;
+	}
+
+	// scale alphas to get the right variance
+	// alphas[0] *= sa.. since alphas[0] == 1, alphas[0] = sa
+	// var x0 = ab0*sa*(sa*sum_alphas-ab0*sa)/(pow(sa*sum_alphas,2)*(sa*sum_alphas+1));
+	// sd x0 = init[4+2*init[0]]
+	double sa = - (pow(sum_alphas,2)*pow(init[4+2*init[0]],2)-alphas[0]*sum_alphas+pow(alphas[0],2))/(pow(sum_alphas,3)*pow(init[4+2*init[0]],2));
+	for ( auto &alp : alphas )
+		alp *= sa;
+
+	joint_prior_t pr_dir = prior::dirichlet( alphas );
+	size_t dim = init[0];
+
+	joint_prior_t jp( [pr_var, pr_means, pr_dir, dim ] ( 
+				const std::vector<parameter_t> &pars ) {
+		double pr = pr_var( pars[0] );
+
+		std::vector<parameter_t> par_alphas;
+		for ( size_t i = 0; i < dim; ++i ) {
+			pr *= pr_means[i]( pars[(i*2)+1] ); 
+
+			if ((i*2)+2<pars.size())
+				par_alphas.push_back( pars[ (i*2)+2 ] );
+		}
+
+		pr *= pr_dir( par_alphas );
+
+
+		return pr;
+	} );
+	return jp;
+}
+
 int main() {
 	// Data
 	std::vector<double> velocities = { 
@@ -29,6 +87,24 @@ int main() {
 		24289, 24366, 24717, 24990, 25633, 26960,
 		26995, 32065, 32789, 34279 };
 	
+	// Prior setup, taken from the article. First par is number of mixtures.
+	// Then the mean and sd for the prior of the variance
+	// Then for each mixture the priors for different means defined by a mean
+	// and a sd.
+	// Finally the means and sds for the weights (number of weights - 1)
+	std::vector<double> init_prior1 = { 3, 20000, 20000, 
+		9000, 5000, 18000, 5000, 30000, 5000, 
+		1.0/3, 0.236, 1.0/3, 0.236, 1.0/3, 0.236 };
+	std::vector<double> init_prior2 = { 4, 15000, 15000, 
+		9000, 5000, 18000, 5000, 22000, 5000, 30000, 5000, 
+		0.136, 0.100, 0.364, 0.139, 0.364, 0.139, 0.136, 0.100 };
+
+	joint_prior_t jp1 = convert_to_joint_prior( init_prior1 );
+	joint_prior_t jp2 = convert_to_joint_prior( init_prior2 );
+
+	std::vector<parameter_t> init_pars1 = { 20000, 9000, 1.0/3, 18000, 1.0/3, 30000 };
+	std::vector<parameter_t> init_pars2 = { 15000, 9000, 1.0/4, 18000, 1.0/3, 22000, 1.0/3, 30000 };
+	
 	// Setup likelihood (can probably just depend on length of pars to work out number of mixtures)
 	likelihood_t ll = [&velocities]( const std::vector<parameter_t> &pars )  {
 		// pars consists of parameters for each mixture, 
@@ -38,14 +114,14 @@ int main() {
 		// The last weight is 1-sum other weights
 		std::vector<prior_t> mixtures;
 		double sum_weight = 0;
-		for ( size_t i = 1; i < velocities.size(); i += 2 ) {
-			mixtures.push_back( [&pars, &i, &sum_weight]( const parameter_t &v ) {
-					if (i+1==pars.size())
-						return (1.0-sum_weight)*prior::normal( pars[i], pars[0] )( v );
-					else {
-						sum_weight += pars[i+1];
-						return pars[i+1]*prior::normal( pars[i], pars[0] )( v );
-					}
+		for ( size_t i = 1; i < pars.size(); i += 2 ) {
+			if (i+1<pars.size())
+				sum_weight += pars[i+1];
+			mixtures.push_back( [&pars, i, sum_weight]( const parameter_t &v ) {
+					if (i+1<pars.size())
+						return pars[i+1]*prior::normal( pars[i], sqrt(pars[0]) )( v );
+					else 
+						return (1.0-sum_weight)*prior::normal( pars[i], sqrt(pars[0]) )( v );
 			} );
 		}
 		double myll = 0;
@@ -54,11 +130,32 @@ int main() {
 			for ( auto &n : mixtures ) {
 				sum += n( v );
 			}
+			//std::cout << v << " " << sum << " " << myll << std::endl;
 			myll += log( sum );
 		}
-
 		return myll;
 	};
+
+	std::mt19937 eng;
+
+	auto chain = spawn<Chain>( eng, ll, init_pars2, jp2 );
+	std::stringstream out;
+	auto logger = spawn<Logger>( out );
+	send( chain, atom("logger"), logger );
+
+	send( chain, atom("run"), 1000000, false );
+	send( chain, atom("no_adapt") );
+	send( chain, atom("run"), 10000000, true );
+	send( chain, atom("log_weight") );
+
+	receive( 
+			on( arg_match ) >> [&out]( const double &lw ) {
+			std::cout << out.str() << std::endl;
+			std::cout << "Weight: " << exp( lw ) << std::endl; } );
+
+	auto tr1 = trace::read_trace_per_sample( out );
+	std::cout << trace::means( tr1 ) << std::endl;
+	std::cout << trace::variances_sample( tr1 ) << std::endl;
 
 	return 0;
 }
