@@ -1,5 +1,7 @@
 #include "chainmcmc/chainmcmc.hh"
 
+#include<realtimeplot/realtimeplot.h>
+
 using namespace chainmcmc;
 
 /* Here we add the mixture model discussed in section 3.2 of:
@@ -22,6 +24,9 @@ joint_prior_t convert_to_joint_prior( const std::vector<double> & init ) {
 	double alpha = 2+pow( init[1], 2 )/pow( init[2], 2 );
 	double beta = init[1]+pow( init[1], 3 )/pow( init[2], 2 );
 	prior_t pr_var = prior::inverse_gamma( alpha, beta );
+	std::cout << pr_var( 2000 ) << " " << pr_var( 5000 ) << " " << 
+		pr_var(20000) << std::endl;
+	std::cout << alpha << " " << beta << std::endl;
 
 	std::vector<prior_t> pr_means;
 	for ( size_t i = 0; i < init[0]; ++i ) {
@@ -51,7 +56,7 @@ joint_prior_t convert_to_joint_prior( const std::vector<double> & init ) {
 
 	joint_prior_t jp( [pr_var, pr_means, pr_dir, dim ] ( 
 				const std::vector<parameter_t> &pars ) {
-		double pr = pr_var( pars[0] );
+		double pr = pr_var( pow(pars[0],2) );
 
 		std::vector<parameter_t> par_alphas;
 		for ( size_t i = 0; i < dim; ++i ) {
@@ -70,6 +75,39 @@ joint_prior_t convert_to_joint_prior( const std::vector<double> & init ) {
 		return pr;
 	} );
 	return jp;
+}
+
+double dmixture( const double &v, const std::vector<parameter_t> &pars ) {
+	std::vector<prior_t> mixtures;
+	double sum_weight = 0;
+	for ( size_t i = 1; i < pars.size(); i += 2 ) {
+		if (i+1<pars.size())
+			sum_weight += pars[i+1];
+		mixtures.push_back( [&pars, i, sum_weight]( const parameter_t &v ) {
+				if (i+1<pars.size())
+				return pars[i+1]*prior::normal( pars[i], pars[0] )( v );
+				else 
+				return (1.0-sum_weight)*prior::normal( pars[i], pars[0] )( v );
+				} );
+	}
+	double sum = 0;
+	for ( auto &n : mixtures ) {
+		sum += n( v );
+	}
+	return sum;
+}
+
+void plot_results( const std::vector<parameter_t> &pars ) {
+	realtimeplot::PlotConfig conf;
+	conf.fixed_plot_area = true;
+	conf.min_x = 0;
+	conf.max_x = 40000;
+	conf.max_y = 2e-4;
+	conf.aspect_ratio = 2.5;
+	realtimeplot::Plot pl = realtimeplot::Plot(conf);
+	for ( size_t i = 0; i < 40000; i += 100 ) {
+		pl.line_add( i, dmixture( i, pars ) );
+	}
 }
 
 int main() {
@@ -122,9 +160,9 @@ int main() {
 				sum_weight += pars[i+1];
 			mixtures.push_back( [&pars, i, sum_weight]( const parameter_t &v ) {
 					if (i+1<pars.size())
-						return pars[i+1]*prior::normal( pars[i], sqrt(pars[0]) )( v );
+						return pars[i+1]*prior::normal( pars[i], pars[0] )( v );
 					else 
-						return (1.0-sum_weight)*prior::normal( pars[i], sqrt(pars[0]) )( v );
+						return (1.0-sum_weight)*prior::normal( pars[i], pars[0] )( v );
 			} );
 		}
 		double myll = 0;
@@ -149,9 +187,9 @@ int main() {
 	auto logger = spawn<Logger>( out );
 	send( chain, atom("logger"), logger );
 
-	send( chain, atom("run"), 1000000, false );
+	send( chain, atom("run"), 100000, false );
 	send( chain, atom("no_adapt") );
-	send( chain, atom("run"), 10000000, true );
+	send( chain, atom("run"), 1000000, true );
 	send( chain, atom("log_weight") );
 
 	receive( 
@@ -159,9 +197,39 @@ int main() {
 			std::cout << out.str() << std::endl;
 			std::cout << "Weight: " << exp( lw ) << std::endl; } );
 
+	std::vector<parameter_t> found_pars = { pow(5224,1), 9674, 0.095, 21337, 0.854, 31992 }; 
+
+
 	auto tr1 = trace::read_trace_per_sample( out );
-	std::cout << trace::means( tr1 ) << std::endl;
-	std::cout << trace::variances_sample( tr1 ) << std::endl;
+	auto means1 = trace::means( tr1 );
+	std::cout << means1 << std::endl;
+	std::cout << "Likelihood: " << ll( found_pars ) << 
+		" + " << ll( means1 ) << std::endl;
+	std::cout << "Prior: " << jp1( found_pars ) << 
+		" + " << jp1( means1 ) << std::endl;
+	plot_results( means1 );
+	auto s_vars = trace::variances_sample( tr1 );
+	std::transform( s_vars.begin(), s_vars.end(), s_vars.begin(),
+			[]( const double &el ) {
+			return sqrt(el); } );
+	std::cout << s_vars << std::endl;
+
+	chain = ChainController( ll, init_pars2, jp2, 10000, 30000, out );
+	out.clear();
+
+
+	auto tr2 = trace::read_trace_per_sample( out );
+	auto means2 = trace::means( tr2 );
+	std::cout << means2 << std::endl;
+	plot_results( means2 );
+	s_vars = trace::variances_sample( tr2 );
+	std::transform( s_vars.begin(), s_vars.end(), s_vars.begin(),
+			[]( const double &el ) {
+			return sqrt(el); } );
+	std::cout << s_vars << std::endl;
+
+
+
 
 	return 0;
 }
