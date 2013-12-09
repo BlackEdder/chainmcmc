@@ -24,9 +24,6 @@ joint_prior_t convert_to_joint_prior( const std::vector<double> & init ) {
 	double alpha = 2+pow( init[1], 2 )/pow( init[2], 2 );
 	double beta = init[1]+pow( init[1], 3 )/pow( init[2], 2 );
 	prior_t pr_var = prior::inverse_gamma( alpha, beta );
-	std::cout << pr_var( 2000 ) << " " << pr_var( 5000 ) << " " << 
-		pr_var(20000) << std::endl;
-	std::cout << alpha << " " << beta << std::endl;
 
 	std::vector<prior_t> pr_means;
 	for ( size_t i = 0; i < init[0]; ++i ) {
@@ -182,39 +179,21 @@ int main() {
 
 	std::mt19937 eng;
 
-	auto chain = spawn<Chain>( eng, ll, init_pars1, jp1 );
 	std::stringstream out;
-	auto logger = spawn<Logger>( out );
-	send( chain, atom("logger"), logger );
-
-	send( chain, atom("run"), 100000, false );
-	send( chain, atom("no_adapt") );
-	send( chain, atom("run"), 1000000, true );
-	send( chain, atom("log_weight") );
-
-	receive( 
-			on( arg_match ) >> [&out]( const double &lw ) {
-			std::cout << out.str() << std::endl;
-			std::cout << "Weight: " << exp( lw ) << std::endl; } );
-
-	std::vector<parameter_t> found_pars = { pow(5224,1), 9674, 0.095, 21337, 0.854, 31992 }; 
-
+	auto chainC = ChainController( ll, init_pars1, jp1, 100000, 300000, 8, out );
 
 	auto tr1 = trace::read_trace_per_sample( out );
 	auto means1 = trace::means( tr1 );
 	std::cout << means1 << std::endl;
-	std::cout << "Likelihood: " << ll( found_pars ) << 
-		" + " << ll( means1 ) << std::endl;
-	std::cout << "Prior: " << jp1( found_pars ) << 
-		" + " << jp1( means1 ) << std::endl;
 	plot_results( means1 );
 	auto s_vars = trace::variances_sample( tr1 );
 	std::transform( s_vars.begin(), s_vars.end(), s_vars.begin(),
 			[]( const double &el ) {
 			return sqrt(el); } );
 	std::cout << s_vars << std::endl;
+	std::cout << std::endl << std::endl;
 
-	chain = ChainController( ll, init_pars2, jp2, 10000, 30000, out );
+	chainC = ChainController( ll, init_pars2, jp2, 100000, 300000, 8, out );
 	out.clear();
 
 
