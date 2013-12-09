@@ -305,11 +305,9 @@ void Chain::step()  {
 
 ChainController::ChainController( const likelihood_t &loglikelihood, 
 		const std::vector<parameter_t> &parameters,
-		const std::vector<prior_t> &priors, size_t warm_up, size_t total_steps,
+		const joint_prior_t &joint_prior, size_t warm_up, size_t total_steps,
 		size_t no_chains, std::ostream &out ) 
 	: no_chains( no_chains ), warm_up( warm_up ) {
-		joint_prior_t joint_prior( priors );
-
 		setup( loglikelihood, {parameters}, joint_prior, no_chains, out );
 
 		run( total_steps );
@@ -318,10 +316,9 @@ ChainController::ChainController( const likelihood_t &loglikelihood,
 
 ChainController::ChainController( const likelihood_t &loglikelihood, 
 		const std::vector<std::vector<parameter_t> > &pars_v,
-		const std::vector<prior_t> &priors, size_t warm_up, size_t total_steps,
+		const joint_prior_t &joint_prior, size_t warm_up, size_t total_steps,
 		size_t no_chains, std::ostream &out ) : no_chains( no_chains ), warm_up( warm_up ) {
 
-	joint_prior_t joint_prior( priors );
 	setup( loglikelihood, pars_v, joint_prior, no_chains, out );
 
 	run( total_steps );

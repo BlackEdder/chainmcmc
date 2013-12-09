@@ -194,12 +194,12 @@ class ChainController {
 	public:
 		ChainController( const likelihood_t &loglikelihood, 
 		const std::vector<parameter_t> &parameters,
-		const std::vector<prior_t> &priors, size_t warm_up, size_t total_steps,
+		const joint_prior_t &jp, size_t warm_up, size_t total_steps,
 			size_t no_threads, std::ostream &out = std::cout );
 
 		ChainController( const likelihood_t &loglikelihood, 
 		const std::vector<std::vector<parameter_t> > &pars_v,
-		const std::vector<prior_t> &priors, size_t warm_up, size_t total_steps,
+		const joint_prior_t &jp, size_t warm_up, size_t total_steps,
 			size_t no_threads, std::ostream &out = std::cout );
 
 
