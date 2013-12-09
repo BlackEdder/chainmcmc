@@ -107,6 +107,57 @@ void plot_results( const std::vector<parameter_t> &pars ) {
 	}
 }
 
+double accept_prob( const std::vector<parameter_t> &new_pars,
+		const std::vector<parameter_t> &old_pars, const likelihood_t &ll, 
+		const joint_prior_t &jp ) {
+	double alpha = exp( step::mh_log_weight( ll, new_pars, jp, 1 ) -
+			step::mh_log_weight( ll, old_pars, jp, 1 ) );
+	//std::cout << alpha << std::endl;
+	alpha = std::min( 1.0, alpha );
+	//std::cout << "BLA: " << alpha << std::endl;
+	return alpha;
+}
+
+double log_marginal_likelihood_vit( const likelihood_t &ll, 
+		const joint_prior_t &jp, 
+		const std::vector<std::vector<parameter_t> > &tr ) {
+	std::mt19937 eng;
+	auto theta_star = trace::means( tr );
+	auto theta_var = trace::variances_sample( tr );
+	size_t no_samples = 2000;
+	double numer = 0;
+	double denom = 0;
+	std::cout << "Star: " << theta_star << std::endl;
+	std::cout << "Var:  " << theta_var << std::endl;
+	for (size_t i = 0; i < theta_star.size(); ++i) {
+		theta_star[i] -= sqrt(theta_var[i]);
+	}
+	std::cout << "Star: " << theta_star << std::endl;
+
+	for (size_t i = 0; i < no_samples; ++i) {
+		double prod_numer = 1;
+		double prod_denom = 1;
+		for (size_t j = 0; j < theta_star.size(); ++j) {
+			auto theta_g = theta_star;
+			theta_g[j] = tr[ tr.size()-1-i ][j];
+			prod_numer *= prior::normal(theta_star[j], (theta_var[j]))(theta_g[j]);
+			prod_numer *= accept_prob( theta_star, theta_g, ll, jp );
+			double sum_denom = 0;
+			for (size_t m = 0; m < 100; ++m) {
+				auto theta_g = theta_star;
+				std::normal_distribution<double> rnorm( 0, sqrt(theta_var[j]) );
+				theta_g[j] += rnorm( eng );
+				sum_denom += accept_prob( theta_g, theta_star, ll, jp );
+			}
+			prod_denom *= sum_denom/1000.0;
+		}
+		numer += prod_numer;
+		denom += prod_denom;
+	}
+	std::cout << numer << " / " << denom << std::endl;
+	return step::mh_log_weight( ll, theta_star, jp, 1 )-log(1.0/no_samples*numer/denom);
+}
+
 int main() {
 	// Data
 	std::vector<double> velocities = { 
@@ -206,6 +257,16 @@ int main() {
 			[]( const double &el ) {
 			return sqrt(el); } );
 	std::cout << s_vars << std::endl;
+
+
+	auto ml1 = log_marginal_likelihood_vit( ll, jp1, tr1 );
+	auto ml2 = log_marginal_likelihood_vit( ll, jp2, tr2 );
+
+	std::cout << ml1 << std::endl;
+	std::cout << ml2 << std::endl;;
+	std::cout << ml2-ml1 << " " << ml1-ml2 << std::endl;
+	std::cout << exp(ml2-ml1) << " " << exp(ml1-ml2) << std::endl;
+
 
 
 
