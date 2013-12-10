@@ -258,6 +258,13 @@ class TestChain : public CxxTest::TestSuite
 					1.0/1.05 );
 
 			TS_ASSERT( adapt_step_size( 0, 10, 2, 9, 0.3, 0.4 ) >	0 );
+
+			// Testing interval
+			TS_ASSERT_EQUALS( adapt_step_size( 1.0, 10, 2, 9, 0.3, 0.4, 10 ),
+					1.0/1.05 );
+			TS_ASSERT_EQUALS( adapt_step_size( 1.0, 11, 2, 9, 0.3, 0.4, 10 ),
+					1.0 );
+
 		}
 };
 	

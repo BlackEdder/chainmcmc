@@ -89,10 +89,12 @@ namespace step {
 	 * \param minimum_tries Only start adjusting after this number of tries
 	 * \param min_level Adjust step size if acceptance rate below this level
 	 * \param max_level Adjust step size if acceptance rate above this level
+	 * \param interval Only adjust every so often. This basically slows down adapting and hopefully makes it less likely to over compensate
 	 */
 	double adapt_step_size( const double current_step_size,
 			const size_t no_tries, const size_t no_accepts,
-			const size_t minimum_tries, const double min_level, const double max_level );
+			const size_t minimum_tries, const double min_level, const double max_level,
+			const size_t interval = 1 );
 
 	class ParameterState {
 		public:
