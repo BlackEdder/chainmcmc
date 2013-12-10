@@ -118,9 +118,10 @@ namespace step {
 
 	double adapt_step_size( const double current_step_size,
 			const size_t no_tries, const size_t no_accepts,
-			const size_t minimum_tries, const double min_level, const double max_level ) {
+			const size_t minimum_tries, const double min_level, const double max_level,
+			const size_t interval ) {
 		double step_size = current_step_size;
-		if (no_tries>minimum_tries) {
+		if (no_tries>minimum_tries && no_tries%interval == 0 ) {
 			double alpha = ((double) no_accepts)/no_tries;
 			if ( alpha > max_level)
 				step_size*=1.05;
@@ -135,7 +136,7 @@ namespace step {
 
 	ParameterState adapt_parameter_sd( ParameterState && ps ) {
 		ps.sd = adapt_step_size( ps.sd, ps.no_tries, ps.no_accepts,
-				100, 0.20, 0.25 );
+				100, 0.20, 0.25, 10 );
 		return ps;
 	}
 
