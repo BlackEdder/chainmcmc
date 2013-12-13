@@ -229,5 +229,23 @@ class ChainController {
 				size_t no_chains, std::ostream &out );
 		void run(const size_t total_steps);
 };
+
+/**
+ * \brief Chain Controller to implement power posteriors
+ *
+ * This method provides both hot cold chain mixing, for searching through parameter space and allows us to calculate the posterior probability distribution of the model, useful for model comparison.
+ *
+ * Following:
+		Friel, N., and A. N. Pettitt. 2008. “Marginal Likelihood Estimation via Power Posteriors.” Journal of the Royal Statistical Society: Series B (Statistical Methodology) 70 (3): 589–607. doi:10.1111/j.1467-9868.2007.00650.x.
+
+ * Some implementation notes
+ * Keep a population of chains with different ts, also keep a map of each t 
+ * with a trace. Ideally the trace should contain of samples and their 
+ * likelihood value. 
+ * This map can be used at the end to calculate the posterior probability 
+ * following Friel and Pettitt
+ */ 
+class FPChainController {
+};
 };
 #endif
