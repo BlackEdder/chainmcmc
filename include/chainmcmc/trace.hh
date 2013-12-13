@@ -37,6 +37,11 @@ namespace chainmcmc {
 namespace trace {
 	typedef std::vector<parameter_t> sample_t;
 
+	struct sampleState {
+		sample_t sample;
+		double log_likelihood;
+	};
+
 
 	namespace details {
 		double mean_v( const std::vector<double> &v ) {
