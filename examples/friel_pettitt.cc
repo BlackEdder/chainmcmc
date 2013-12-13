@@ -50,14 +50,18 @@ double accept_prob( const std::vector<parameter_t> &new_pars,
 double log_marginal_likelihood( std::mt19937 &eng, const likelihood_t &ll, 
 		const std::vector<parameter_t> &init_pars, const 
 		std::vector<prior_t> &priors ) {
-	std::vector<double> as = { 0,0.001, 0.01, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 
-		0.8, 0.9,	1.0 };
+	double c = 5; double n = 20;
+	std::vector<double> ts;
+	for (size_t i = 0; i <= n; ++i)
+		ts.push_back( pow(((double) i)/n, c ) );
 
 	double exp_ll = 0;
 	double sum_ll = 0;
 
-	for ( size_t i = 0; i < as.size(); ++i ) {
-		double ti = pow(as[i],5);
+	double old_ti = 0;
+
+	for ( auto & ti : ts ) {
+
 		likelihood_t hot = [&ll, &ti]( const std::vector<parameter_t> &pars ) {
 			if (ti == 0)
 				return 0.0;
@@ -89,10 +93,12 @@ double log_marginal_likelihood( std::mt19937 &eng, const likelihood_t &ll,
 		mean_ll /= tr.size();
 		std::cout << "Mean ll " << mean_ll << std::endl;
 
-		if ( i != 0 ) {
-			sum_ll += (pow(as[i],5)-pow(as[i-1],5))*(mean_ll+exp_ll)/2.0;
+		if ( ti != 0 ) {
+			sum_ll += (ti-old_ti)*(mean_ll+exp_ll)/2.0;
 		}
+		std::cout << "Sum ll " << sum_ll << std::endl;
 		exp_ll = mean_ll;
+		old_ti = ti;
 	}
 
 	return sum_ll;
