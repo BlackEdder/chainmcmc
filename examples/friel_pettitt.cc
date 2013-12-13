@@ -86,6 +86,18 @@ double log_marginal_likelihood( std::mt19937 &eng, const likelihood_t &ll,
 				std::cout << "Weight: " << exp( lw ) << std::endl; } );
 
 		auto tr = trace::read_trace_per_sample( out );
+		std::cout << "Prior init: " << joint_prior_t( priors )( init_pars ) << " "
+			<< priors[0]( init_pars[0] ) << " " 
+			<< priors[1]( init_pars[1] ) << " " 
+			<< priors[2]( init_pars[2] ) << " " 
+			<<std::endl;
+
+		std::cout << tr.back() << std::endl;
+		std::cout << "Prior: " << joint_prior_t( priors )( tr.back() ) << " "
+			<< priors[0]( tr.back()[0] ) << " " 
+			<< priors[1]( tr.back()[1] ) << " " 
+			<< priors[2]( tr.back()[2] ) << " " 
+			<<std::endl;
 
 		double mean_ll = 0;
 		for ( auto & sample : tr )
@@ -141,7 +153,8 @@ int main() {
 
 	std::vector<parameter_t> init_pars1 = { 3000, 185, pow(300,2) };
 	std::vector<prior_t> priors1 = { prior::normal( 3000, 1e6 ),
-		prior::normal( 185, 1e4 ), prior::inverse_gamma( 3.0, 1.0/(2*pow(300,2)) ) };
+		prior::normal( 185, 1e4 ), prior::inverse_gamma( 3.0, (2*pow(300,2)) ) };
+	std::cout << "Prior init: " << joint_prior_t( priors1 )( init_pars1 ) << std::endl;
 
 	double lml1 = log_marginal_likelihood( eng, ll1, init_pars1, priors1 );
 	double lml2 = log_marginal_likelihood( eng, ll2, init_pars1, priors1 );
