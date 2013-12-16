@@ -271,6 +271,18 @@ void Chain::init()  {
 		on( atom("temp" ) ) >> [this]() {
 			return temperature;
 		},
+		on( atom( "parameters" ) ) >> [this] () {
+			std::stringstream s; // Collect output in stringstream for thread safety
+			bool first = true;
+			for ( auto & par : state.parameters ) {
+				if (first) {
+					s << par;
+					first = false;
+				} else
+					s	<< "\t" << par;
+			}
+			return s.str();
+		},
 		on( atom( "logger" ), arg_match ) >> [this]( 
 				const actor_ptr &new_logger ) {
 			sync_send( logger, atom("close") ).then(
@@ -490,6 +502,9 @@ FPChainController::FPChainController( const likelihood_t &loglikelihood,
 	}
 
 	std::map<double, double> FPChainController::run() {
+		std::vector<size_t> ids;
+		for (size_t i = 0; i < chains.size(); ++i)
+			ids.push_back( i );
 		size_t generation = 0;
 		// Run some steps normally
 		bool log_on = false;
@@ -501,11 +516,67 @@ FPChainController::FPChainController( const likelihood_t &loglikelihood,
 					// No more adaptation of step size
 					send( id_chain_state.second.chain, atom("no_adapt") );
 			}
+
 			for ( auto & id_chain_state : chains ) {
 				send( id_chain_state.second.chain, 
 						atom("run"), no_steps_between_swaps, log_on );
 			}
-			// Try switching around all chains
+
+			// Try switching chains. Here we 10 times choose two chains/populations 
+			// and try to switch those
+			for ( size_t i = 0; i < 10; ++i ) {
+				fisherYatesKSubsets( ids, 2, engine );
+				auto chainState1 = chains[ ids[0] ];
+				auto chainState2 = chains[ ids[1] ];
+				// Make sure we are finished running
+				std::vector<parameter_t> pars1;
+				std::vector<parameter_t> pars2;
+				send( chainState1.chain, atom("parameters") );
+				receive( 
+					on(arg_match) >> [&pars1]( const std::string &ans ) {
+						pars1 = trace::sample_from_string( ans );
+					}
+				);
+				send( chainState2.chain, atom("parameters") );
+				receive( 
+					on(arg_match) >> [&pars2]( const std::string &ans ) {
+						pars2 = trace::sample_from_string( ans );
+					}
+				);
+
+				double alpha = heated_loglikelihood( 
+						chainState2.current_t, log_likelihood )( 
+							pars1 ) + log( joint_prior( pars1 ) ) +
+						heated_loglikelihood(
+							chainState1.current_t, log_likelihood )( pars2 ) + 
+						log( joint_prior( pars2 ) ) - (
+						heated_loglikelihood( 
+							chainState1.current_t, log_likelihood )( 
+								pars1 ) + log( joint_prior( pars1 ) ) +
+						heated_loglikelihood(
+							chainState2.current_t, log_likelihood )( 
+								pars2 ) + log( joint_prior( pars2 ) )
+						);
+				alpha = exp( alpha );
+				bool accepted = false;
+				if ( alpha > 1 )
+					accepted = true;
+				else {
+					std::uniform_real_distribution<double> unif(0,1);
+					if ( unif( engine ) < alpha )
+						accepted = true;
+				}
+				if (accepted) {
+					double tmp_t = chainState1.current_t;
+					chainState1.current_t = chainState2.current_t;
+					chainState2.current_t = tmp_t;
+					send( chainState1, atom("ll_function"),
+							heated_loglikelihood( chainState1.current_t, log_likelihood ) );
+					send( chainState2, atom("ll_function"),
+							heated_loglikelihood( chainState2.current_t, log_likelihood ) );
+				};
+			}
+			
 			// Don't forget to pass correct logger around
 			
 			// Repeat till > total_steps + warm up
