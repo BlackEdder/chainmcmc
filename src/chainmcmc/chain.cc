@@ -136,7 +136,7 @@ namespace step {
 
 	ParameterState adapt_parameter_sd( ParameterState && ps ) {
 		ps.sd = adapt_step_size( ps.sd, ps.no_tries, ps.no_accepts,
-				100, 0.20, 0.25, 10 );
+				100, 0.20, 0.25, 1 );
 		return ps;
 	}
 
@@ -153,10 +153,10 @@ namespace step {
 		proposed_parameters[state.current_parameter] = 
 			rparameter( eng, proposed_parameters[state.current_parameter], 
 					state.pss[state.current_parameter].sd	);
-		++state.pss[state.current_parameter].no_tries;
 
 		if (joint_prior( proposed_parameters ) == 0) {
 			accepted = false;
+			++state.pss[state.current_parameter].no_tries;
 		}
 
 		double old_lweight;
@@ -170,16 +170,19 @@ namespace step {
 				old_lweight = mh_log_weight( state.loglikelihood, state.parameters,
 						joint_prior, temperature );
 				if (!std::isnan( old_lweight)) {
-					double proposed_lweight = mh_log_weight( proposed_ll, proposed_parameters,
+					double proposed_lweight = 
+						mh_log_weight( proposed_ll, proposed_parameters,
 							joint_prior, temperature );
 					accepted = accept( eng, old_lweight, proposed_lweight, temperature );
+					// Only count when not nan/infinite
+					++state.pss[state.current_parameter].no_tries;
+					if (accepted)
+						++state.pss[state.current_parameter].no_accepts;
 				}
 			}
 		}
 
 		if (accepted) {
-			++state.pss[state.current_parameter].no_accepts;
-
 			state.loglikelihood = proposed_ll; 
 			state.parameters = proposed_parameters;
 		}
@@ -250,7 +253,7 @@ void Chain::init()  {
 		on( atom( "no_adapt" ) ) >> [this]() {
 			/*std::cout << "Sd ";
 			for ( auto & ps : state.pss )
-				std::cout << " " << ps.sd;
+				std::cout << " " << ps.sd << " " << ps.no_tries << " " << ps.no_accepts;
 			std::cout << std::endl;*/
 			adapting = false;
 		},
@@ -284,7 +287,8 @@ void Chain::init()  {
 }
 
 void Chain::step()  {
-	state = step::step( rnd_engine, std::move( state ), loglikelihood, joint_prior,
+	state = step::step( rnd_engine, 
+			std::move( state ), loglikelihood, joint_prior,
 			adapting, temperature );
 	if (state.generation%50 == 0 && log_on) {
 		std::stringstream s; // Collect output in stringstream for thread safety
@@ -437,7 +441,8 @@ FPChainController::FPChainController( const likelihood_t &loglikelihood,
 		const std::vector<std::vector<parameter_t> > &pars_v,
 		const joint_prior_t &joint_prior, size_t warm_up, size_t total_steps,
 		std::ostream &out ) : 
-			warm_up( warm_up ), total_steps( total_steps ), out( out ) {
+			warm_up( warm_up ), total_steps( total_steps ), out( out ),
+			log_likelihood( loglikelihood ), joint_prior( joint_prior ) {
 		setup( loglikelihood, pars_v, joint_prior );
 	}
 
@@ -471,14 +476,31 @@ FPChainController::FPChainController( const likelihood_t &loglikelihood,
 		}
 	}
 
+
+	double FPChainController::integrate( const std::map<double, double>& es ) {
+		double sum = 0;
+		double old_t = es.begin()->first;
+		double old_exp = es.begin()->first;
+		for ( auto it = (++es.begin()); it != es.end(); ++it ) {
+			sum += (it->first - old_t)*(it->second-old_exp)/2.0;
+			old_t = it->first;
+			old_exp = it->second;
+		}
+		return sum;
+	}
+
 	std::map<double, double> FPChainController::run() {
 		size_t generation = 0;
 		// Run some steps normally
 		bool log_on = false;
 		while (generation<warm_up+total_steps) {
 			// Log to trace logger if > warm_up
-			if (generation>warm_up)
+			if (generation>warm_up && !log_on) {
 				log_on = true;
+				for ( auto & id_chain_state : chains ) 
+					// No more adaptation of step size
+					send( id_chain_state.second.chain, atom("no_adapt") );
+			}
 			for ( auto & id_chain_state : chains ) {
 				send( id_chain_state.second.chain, 
 						atom("run"), no_steps_between_swaps, log_on );
@@ -514,8 +536,17 @@ FPChainController::FPChainController( const likelihood_t &loglikelihood,
 		 	out << sample << std::endl;
 
 		// At the end gather all traces
-		std::map<double, double> ts_exps; 
-		// Calculate means
+		std::map<double, double> ts_exps;
+		for ( auto & temp_tr : traces ) {
+			std::vector< double > lls;
+			//std::cout << "Temp: " << temp_tr.first << std::endl;
+			// Calculate means
+			for ( auto & sample : temp_tr.second ) {
+				lls.push_back( log( joint_prior( sample ) ) + 
+						log_likelihood( sample ) );
+			}
+			ts_exps[temp_tr.first] = trace::details::mean_v( lls );
+		}
 		// Calculate marginal log likelihood
 		return ts_exps;
 	}

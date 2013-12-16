@@ -268,6 +268,8 @@ class FPChainController {
 		 */
 		std::map<double, double> run();
 
+		double integrate( const std::map<double, double>& es );
+
 	protected:
 		//! Number of populations (see Friel and Pettitt 2008)
 		size_t n = 50;
@@ -283,6 +285,9 @@ class FPChainController {
 		std::map<double, actor_ptr> trace_actors;
 		std::map<double, std::vector<trace::sample_t> > traces;
 
+		likelihood_t log_likelihood;
+		joint_prior_t joint_prior;
+
 		std::ostream &out;
 		/**
 		 * \brief Heat the log likelihood by certain temperature
@@ -293,6 +298,7 @@ class FPChainController {
 		void setup( const likelihood_t &loglikelihood, 
 				const std::vector<std::vector<parameter_t> > &pars_v,
 				const joint_prior_t &joint_prior );
+
 };
 };
 #endif

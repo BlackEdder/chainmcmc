@@ -160,17 +160,28 @@ class TestComplete : public CxxTest::TestSuite
 			auto expected = analytical_expected( the_data );
 
 			double m = 0;
-			double v = 2;
+			double v = 3;
 
-			std::vector<prior_t> priors = { prior::normal( m, sqrt(v) ) };
+			std::stringstream output;
+			std::vector<prior_t> priors = { prior::normal( m, sqrt( v ) ) };
 			auto contr = FPChainController( loglikelihood, { init_pars },
-			  priors, 10000, 50000 );
+			  priors, 100000, 100000, output );
 			auto ts = contr.run();
-			TS_ASSERT_EQUALS( ts.size(), 100 );
+			auto tr = trace::read_trace_per_sample( output );
+			// Check results
+			
+			auto means = trace::means( tr );
+			std::cout << "Means " << means[0] << std::endl;
+
+			TS_ASSERT_EQUALS( ts.size(), 50 );
+			std::map<double, double> myts;
 			for ( auto & temp_result : ts ) {
 				TS_ASSERT_DELTA( expected( temp_result.first, m, v ), 
 						temp_result.second, 0 );
+				myts[ temp_result.first] = expected( temp_result.first, m, v );
 			}
+			TS_ASSERT_DELTA( contr.integrate( myts ), 
+					contr.integrate( ts ), 0 );
 		}
 };
 
