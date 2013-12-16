@@ -274,8 +274,11 @@ void Chain::init()  {
 		on( atom("temp" ) ) >> [this]() {
 			return temperature;
 		},
-		on( atom( "logger" ), arg_match ) >> [this]( const actor_ptr &new_logger ) {
+		on( atom( "logger" ), arg_match ) >> [this]( 
+				const actor_ptr &new_logger ) {
+			usleep( 10000 );
 			send( logger, atom("close") );
+			usleep( 10000 );
 			logger = new_logger;
 		},
 		on( atom("close" ) ) >> [this]() {
@@ -434,4 +437,86 @@ void ChainController::run( const size_t total_steps ) {
 		on( atom("closed") ) >> []() {}
 	);
 }
+
+FPChainController::FPChainController( const likelihood_t &loglikelihood, 
+		const std::vector<std::vector<parameter_t> > &pars_v,
+		const joint_prior_t &joint_prior, size_t warm_up, size_t total_steps,
+		std::ostream &out ) : 
+			warm_up( warm_up ), total_steps( total_steps ), out( out ) {
+		setup( loglikelihood, pars_v, joint_prior );
+	}
+
+	likelihood_t FPChainController::heated_loglikelihood( 
+			const double &temp, const likelihood_t &loglikelihood ) {
+		return [temp, loglikelihood]( const trace::sample_t &pars ) {
+			if (temp == 0)
+				return 0.0;
+			return temp*loglikelihood( pars );
+		};
+	}
+
+	void FPChainController::setup( const likelihood_t &loglikelihood, 
+			const std::vector<std::vector<parameter_t> > &pars_v,
+			const joint_prior_t &joint_prior ) {
+		for (size_t i = 0; i < n; ++i) {
+			double temp = pow( ((double) i)/(n-1), c );
+			traces[temp] = std::vector<trace::sample_t>();
+			trace_actors[temp] = spawn<TraceLogger>( traces[temp] );
+			FPChainState state;
+			state.current_t = temp;
+			state.chain = spawn<Chain>( engine, 
+					heated_loglikelihood( temp, loglikelihood ), 
+					pars_v[i%pars_v.size()], joint_prior, 1 );
+
+			send( state.chain, atom("logger"), trace_actors[temp] );
+		  chains[i] = state;
+		}
+	}
+
+	void FPChainController::run() {
+		size_t generation = 0;
+		// Run some steps normally
+		bool log_on = false;
+		while (generation<warm_up+total_steps) {
+			// Log to trace logger if > warm_up
+			if (generation>warm_up)
+				log_on = true;
+			for ( auto & id_chain_state : chains ) {
+				send( id_chain_state.second.chain, 
+						atom("run"), no_steps_between_swaps, log_on );
+			}
+			// Try switching around all chains
+			// Don't forget to pass correct logger around
+			
+			// Repeat till > total_steps + warm up
+			generation += no_steps_between_swaps + 1;
+		}
+		
+		// Close all chains
+		for ( auto & id_chain_state : chains ) 
+			send( id_chain_state.second.chain, atom("close") );
+
+		size_t i = 0;
+		receive_for( i, chains.size() ) (
+				on( atom("closed") ) >> []() {}
+		);
+
+		// Close all loggers 
+		for ( auto & temp_tr_actor : trace_actors ) 
+			send( temp_tr_actor.second, atom("close") );
+
+		i = 0;
+		receive_for( i, trace_actors.size() ) (
+				on( atom("closed") ) >> []() {}
+		);
+
+
+		// Copy traces[1] into out
+		for ( auto & sample : traces[1] )
+		 	out << sample << std::endl;
+
+		// At the end gather all traces
+		// Calculate means
+		// Calculate marginal log likelihood
+	}
 };

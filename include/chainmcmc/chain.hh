@@ -231,6 +231,12 @@ class ChainController {
 		void run(const size_t total_steps);
 };
 
+
+struct FPChainState {
+	double current_t;
+	actor_ptr chain;
+};
+
 /**
  * \brief Chain Controller to implement power posteriors
  *
@@ -242,14 +248,46 @@ class ChainController {
  * Some implementation notes
  * Keep a population of chains with different ts, also keep a map of each t 
  * with a trace. Ideally the trace should contain samples and their 
- * likelihood value. 
+ * likelihood value. Actually since we need flat log likelihood and not the hot values, it is not that useful to save the likelihood value. 
  * This map can be used at the end to calculate the posterior probability 
  * following Friel and Pettitt
- */ 
+ */
 class FPChainController {
 	public:
+		std::mt19937 engine;
+
+		FPChainController( const likelihood_t &loglikelihood, 
+				const std::vector<std::vector<parameter_t> > &pars_v,
+				const joint_prior_t &jp, size_t warm_up, size_t total_steps, 
+				std::ostream &out = std::cout );
+
+		void run();
+
 	protected:
-		std::map<double, std::vector<chainmcmc::trace::sampleState> > traces;
+		//! Number of populations (see Friel and Pettitt 2008)
+		size_t n = 50;
+		//! Distribution of populations (see Friel and Pettitt 2008)
+		size_t c = 5;
+
+		size_t no_steps_between_swaps = 15; //! Try swap after this many steps
+
+		size_t warm_up = 10000;
+		size_t total_steps = 10000;
+
+		std::map<size_t, FPChainState> chains;
+		std::map<double, actor_ptr> trace_actors;
+		std::map<double, std::vector<trace::sample_t> > traces;
+
+		std::ostream &out;
+		/**
+		 * \brief Heat the log likelihood by certain temperature
+		 */
+		likelihood_t	heated_loglikelihood( const double &temp,
+				const likelihood_t &loglikelihood );
+
+		void setup( const likelihood_t &loglikelihood, 
+				const std::vector<std::vector<parameter_t> > &pars_v,
+				const joint_prior_t &joint_prior );
 };
 };
 #endif

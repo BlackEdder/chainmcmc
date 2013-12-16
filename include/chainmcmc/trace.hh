@@ -64,6 +64,11 @@ namespace trace {
 			const std::string & fname );
 
 	/**
+	 * \brief Turns a string into a sample_t
+	 */
+	sample_t sample_from_string( const std::string & line );
+
+	/**
 	 * \brief Reads a trace file
 	 *
 	 * Returns a vector with samples

@@ -79,6 +79,45 @@ class TestComplete : public CxxTest::TestSuite
 			TS_ASSERT_DELTA( means[0], -1, 0.01 );
 			TS_ASSERT_DELTA( means[1], 0.2, 0.05 );
 		}
+
+		void testFPNormalDistribution() {
+			// generate data
+			auto the_data = generate_fake_data( 100, -1, 0.2 );
+
+			std::vector<parameter_t> pars  = { 1, 1 };
+
+			auto loglikelihood = [&the_data]( const std::vector<parameter_t> &params ) {
+				double pi = 3.1415926535897;
+				double mean = params[0];
+				double sd = params[1];
+				double n = the_data.size();
+				double sum = 0;
+				for ( auto &d : the_data )
+					sum += pow(d-mean,2);
+				double ll = -n/2.0*(log(2*pi)+log(pow(sd,2))) - 1.0/(2.0*pow(sd,2))*sum;
+				return ll;
+			};
+
+			std::vector<prior_t> priors = { 
+				[]( const parameter_t &par ) { return 1; }, //Any value is allowed for mean
+				[]( const parameter_t &par ) { if (par<0) return 0; else return 1; } // sd need to be positive
+			};
+
+			// Use chain and log to ostringstream
+			std::stringstream output;
+			auto contr = FPChainController( loglikelihood, { pars },
+			  priors, 10000, 50000, output );
+			contr.run();
+
+			// Use trace to analyse ostringstream
+			auto tr = trace::read_trace_per_sample( output );
+			// Check results
+			
+			auto means = trace::means( tr );
+
+			TS_ASSERT_DELTA( means[0], -1, 0.02 );
+			TS_ASSERT_DELTA( means[1], 0.2, 0.05 );
+		}
 };
 
 

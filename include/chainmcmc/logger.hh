@@ -25,6 +25,8 @@
 
 #include <cppa/cppa.hpp>
 
+#include "chainmcmc/trace.hh"
+
 namespace chainmcmc {
 	using namespace cppa;
 
@@ -35,6 +37,15 @@ namespace chainmcmc {
 			void init();
 		protected:
 			std::ostream & out;
+	};
+
+	class TraceLogger : public event_based_actor {
+		public:
+			TraceLogger( std::vector<trace::sample_t> & tr );
+
+			void init();
+		protected:
+			std::vector<trace::sample_t> & the_trace;
 	};
 };
 
