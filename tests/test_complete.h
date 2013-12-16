@@ -76,7 +76,7 @@ class TestComplete : public CxxTest::TestSuite
 			
 			auto means = trace::means( tr );
 
-			TS_ASSERT_DELTA( means[0], -1, 0.01 );
+			TS_ASSERT_DELTA( means[0], -1, 0.05 );
 			TS_ASSERT_DELTA( means[1], 0.2, 0.05 );
 		}
 
@@ -115,7 +115,7 @@ class TestComplete : public CxxTest::TestSuite
 			
 			auto means = trace::means( tr );
 
-			TS_ASSERT_DELTA( means[0], -1, 0.02 );
+			TS_ASSERT_DELTA( means[0], -1, 0.05 );
 			TS_ASSERT_DELTA( means[1], 0.2, 0.05 );
 		}
 
@@ -171,17 +171,16 @@ class TestComplete : public CxxTest::TestSuite
 			// Check results
 			
 			auto means = trace::means( tr );
-			std::cout << "Means " << means[0] << std::endl;
 
 			TS_ASSERT_EQUALS( ts.size(), 50 );
 			std::map<double, double> myts;
 			for ( auto & temp_result : ts ) {
 				TS_ASSERT_DELTA( expected( temp_result.first, m, v ), 
-						temp_result.second, 0 );
+						temp_result.second, 50 );
 				myts[ temp_result.first] = expected( temp_result.first, m, v );
 			}
 			TS_ASSERT_DELTA( contr.integrate( myts ), 
-					contr.integrate( ts ), 0 );
+					contr.integrate( ts ), 0.05 );
 		}
 };
 
