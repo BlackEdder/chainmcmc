@@ -28,6 +28,7 @@
 
 #include <cppa/cppa.hpp>
 
+#include "chainmcmc/trace.hh"
 #include "chainmcmc/logger.hh"
 #include "chainmcmc/prior.hh"
 
@@ -240,12 +241,15 @@ class ChainController {
 
  * Some implementation notes
  * Keep a population of chains with different ts, also keep a map of each t 
- * with a trace. Ideally the trace should contain of samples and their 
+ * with a trace. Ideally the trace should contain samples and their 
  * likelihood value. 
  * This map can be used at the end to calculate the posterior probability 
  * following Friel and Pettitt
  */ 
 class FPChainController {
+	public:
+	protected:
+		std::map<double, std::vector<chainmcmc::trace::sampleState> > traces;
 };
 };
 #endif

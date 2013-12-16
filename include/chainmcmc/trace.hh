@@ -31,7 +31,7 @@
 
 #include <boost/lexical_cast.hpp>
 
-#include "chainmcmc/chain.hh"
+#include "chainmcmc/parameter.hh"
 
 namespace chainmcmc {
 namespace trace {
@@ -44,44 +44,15 @@ namespace trace {
 
 
 	namespace details {
-		double mean_v( const std::vector<double> &v ) {
-			double sum = std::accumulate( v.begin(), v.end(), 0.0, 
-					[]( const double a, const double b ) { return a+b; } );
-			return sum/v.size();
-		}
+		double mean_v( const std::vector<double> &v );
 
-		double var_v( const std::vector<double> &v ) {
-			double mean = mean_v( v );
-			double var_sum = std::accumulate( v.begin(), v.end(), 0.0, 
-					[&mean]( const double a, const double b ) { 
-					return a+pow(b-mean,2); } );
-			return var_sum/v.size();
-		}
+		double var_v( const std::vector<double> &v );
 
 		std::pair<double, double> confidence( const double interval,
-				std::vector<double> v ) {
-			std::pair<double, double> result;
-			std::sort( v.begin(), v.end() );
-			double alpha = (1.0-interval)/2.0;
-			result.first = v[ceil(alpha*v.size())];
-			result.second = v[floor((1.0-alpha)*v.size())];
-			return result;
-		}
+				std::vector<double> v );
 
 		double cov_v( const std::vector<double> &v,
-				const std::vector<double> &w ) {
-			if ( v.size() != w.size() ) {
-				std::cerr << "Vectors need to be the same size" << std::endl;
-				throw;
-			}
-			double meanv = mean_v( v );
-			double meanw = mean_v( w );
-			double cov = 0;
-			for ( size_t i = 0; i < v.size(); ++i ) {
-				cov += (v[i] - meanv)*(w[i]-meanw);
-			}
-			return cov/v.size();
-		}
+				const std::vector<double> &w );	
 	};
 
 	/**

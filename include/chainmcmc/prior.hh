@@ -28,8 +28,9 @@
 #include<cmath>
 #include<iostream>
 
+#include "chainmcmc/parameter.hh"
+
 namespace chainmcmc {
-	typedef double parameter_t;
 	typedef std::function<double( const parameter_t )> prior_t;
 
 	/**
