@@ -118,6 +118,60 @@ class TestComplete : public CxxTest::TestSuite
 			TS_ASSERT_DELTA( means[0], -1, 0.02 );
 			TS_ASSERT_DELTA( means[1], 0.2, 0.05 );
 		}
+
+		std::function<double( const double &, const double &, const double & )>
+			analytical_expected( const std::vector<double> &the_data ) {
+			double pi = 3.1415926535897;
+			double mean_y = trace::details::mean_v( the_data );
+			double n = the_data.size();
+			double independent = -(n/2*log(2*pi));
+			for ( auto & y : the_data ) {
+				independent -= 0.5 * pow(y-mean_y,2);
+			}
+			return [mean_y, independent, n]( const double &t, const double &m,
+					const double &v ) {
+				return independent - n/2*pow(m-mean_y,2)/pow(v*m*t+1,2) -
+					n/2*1.0/(n*t+1/v);
+			};
+		}
+
+		void testPowerPosterior() {
+			// This test uses the analytical example in Friel & Pettitt 2008
+			// to test our results
+			auto the_data = generate_fake_data( 100, -1, 1 );
+			std::vector<parameter_t> init_pars  = { 1 };
+
+			auto loglikelihood = [&the_data]( 
+					const std::vector<parameter_t> &params )
+			{
+				double pi = 3.1415926535897;
+				double mean = params[0];
+				double sd = 1;
+				double n = the_data.size();
+				double sum = 0;
+				for ( auto &d : the_data )
+					sum += pow(d-mean,2);
+				double ll = -n/2.0*(log(2*pi)+log(pow(sd,2))) - 
+					1.0/(2.0*pow(sd,2))*sum;
+				return ll;
+			};
+
+
+			auto expected = analytical_expected( the_data );
+
+			double m = 0;
+			double v = 2;
+
+			std::vector<prior_t> priors = { prior::normal( m, sqrt(v) ) };
+			auto contr = FPChainController( loglikelihood, { init_pars },
+			  priors, 10000, 50000 );
+			auto ts = contr.run();
+			TS_ASSERT_EQUALS( ts.size(), 100 );
+			for ( auto & temp_result : ts ) {
+				TS_ASSERT_DELTA( expected( temp_result.first, m, v ), 
+						temp_result.second, 0 );
+			}
+		}
 };
 
 

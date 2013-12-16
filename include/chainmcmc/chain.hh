@@ -260,8 +260,13 @@ class FPChainController {
 				const std::vector<std::vector<parameter_t> > &pars_v,
 				const joint_prior_t &jp, size_t warm_up, size_t total_steps, 
 				std::ostream &out = std::cout );
-
-		void run();
+		
+		/**
+		 * \brief Run the mcmc and returns a map of temperatures and mean log likelihoods
+		 *
+		 * This map is used to calculate the marginal log likelihood
+		 */
+		std::map<double, double> run();
 
 	protected:
 		//! Number of populations (see Friel and Pettitt 2008)

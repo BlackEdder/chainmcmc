@@ -205,9 +205,6 @@ Chain::Chain( std::mt19937 &engine,
 	state.parameters = parameters;
 	for ( size_t i = 0; i < parameters.size(); ++i )
 		state.pss.push_back( step::ParameterState() );
-	state.pss[0].sd = 100;
-	state.pss[1].sd = 1;
-	state.pss[2].sd = 30000;
 }
 
 Chain::Chain( std::mt19937 &engine, 
@@ -223,9 +220,6 @@ Chain::Chain( std::mt19937 &engine,
 	state.parameters = parameters;
 	for ( size_t i = 0; i < parameters.size(); ++i )
 		state.pss.push_back( step::ParameterState() );
-	state.pss[0].sd = 100;
-	state.pss[1].sd = 1;
-	state.pss[2].sd = 30000;
 }
 void Chain::init()  {
 	become(
@@ -276,9 +270,10 @@ void Chain::init()  {
 		},
 		on( atom( "logger" ), arg_match ) >> [this]( 
 				const actor_ptr &new_logger ) {
-			usleep( 10000 );
-			send( logger, atom("close") );
-			usleep( 10000 );
+			sync_send( logger, atom("close") ).then(
+					on( atom("closed") ) >> []() {
+					}
+				);
 			logger = new_logger;
 		},
 		on( atom("close" ) ) >> [this]() {
@@ -459,12 +454,15 @@ FPChainController::FPChainController( const likelihood_t &loglikelihood,
 			const std::vector<std::vector<parameter_t> > &pars_v,
 			const joint_prior_t &joint_prior ) {
 		for (size_t i = 0; i < n; ++i) {
+			std::mt19937 eng;
+			eng.seed( engine() );
+
 			double temp = pow( ((double) i)/(n-1), c );
 			traces[temp] = std::vector<trace::sample_t>();
 			trace_actors[temp] = spawn<TraceLogger>( traces[temp] );
 			FPChainState state;
 			state.current_t = temp;
-			state.chain = spawn<Chain>( engine, 
+			state.chain = spawn<Chain>( eng, 
 					heated_loglikelihood( temp, loglikelihood ), 
 					pars_v[i%pars_v.size()], joint_prior, 1 );
 
@@ -473,7 +471,7 @@ FPChainController::FPChainController( const likelihood_t &loglikelihood,
 		}
 	}
 
-	void FPChainController::run() {
+	std::map<double, double> FPChainController::run() {
 		size_t generation = 0;
 		// Run some steps normally
 		bool log_on = false;
@@ -516,7 +514,9 @@ FPChainController::FPChainController( const likelihood_t &loglikelihood,
 		 	out << sample << std::endl;
 
 		// At the end gather all traces
+		std::map<double, double> ts_exps; 
 		// Calculate means
 		// Calculate marginal log likelihood
+		return ts_exps;
 	}
 };
