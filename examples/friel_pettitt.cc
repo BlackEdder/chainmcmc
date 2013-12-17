@@ -156,8 +156,22 @@ int main() {
 		prior::normal( 185, 1e4 ), prior::inverse_gamma( 3.0, (2*pow(300,2)) ) };
 	std::cout << "Prior init: " << joint_prior_t( priors1 )( init_pars1 ) << std::endl;
 
-	double lml1 = log_marginal_likelihood( eng, ll1, init_pars1, priors1 );
-	double lml2 = log_marginal_likelihood( eng, ll2, init_pars1, priors1 );
+	/*double lml1 = log_marginal_likelihood( eng, ll1, init_pars1, priors1 );
+	double lml2 = log_marginal_likelihood( eng, ll2, init_pars1, priors1 );*/
+	std::stringstream output;
+	auto contr = FPChainController( ll1, { init_pars1 },
+			  priors1, 100000, 100000, output );
+	auto ts = contr.run();
+
+	double lml1 = contr.integrate( ts );
+	
+	output.clear();
+	auto contr2 = FPChainController( ll2, { init_pars1 },
+			  priors1, 100000, 100000, output );
+	ts = contr2.run();
+
+	double lml2 = contr2.integrate( ts );
+
 
 	std::cout << lml1 << std::endl;
 	std::cout << lml2 << std::endl;

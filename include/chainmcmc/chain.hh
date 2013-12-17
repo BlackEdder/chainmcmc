@@ -276,7 +276,7 @@ class FPChainController {
 		//! Distribution of populations (see Friel and Pettitt 2008)
 		size_t c = 5;
 
-		size_t no_steps_between_swaps = 15; //! Try swap after this many steps
+		size_t no_steps_between_swaps = 50; //! Try swap after this many steps
 
 		size_t warm_up = 10000;
 		size_t total_steps = 10000;

@@ -130,15 +130,15 @@ class TestComplete : public CxxTest::TestSuite
 			}
 			return [mean_y, independent, n]( const double &t, const double &m,
 					const double &v ) {
-				return independent - n/2*pow(m-mean_y,2)/pow(v*m*t+1,2) -
-					n/2*1.0/(n*t+1/v);
+				return independent - (n/2.0)*(pow(m-mean_y,2)/(pow(v*m*t+1,2))) -
+					(n/2.0)*(1.0/(n*t+1/v));
 			};
 		}
 
 		void testPowerPosterior() {
 			// This test uses the analytical example in Friel & Pettitt 2008
 			// to test our results
-			auto the_data = generate_fake_data( 100, -1, 1 );
+			auto the_data = generate_fake_data( 1000, -1, 1 );
 			std::vector<parameter_t> init_pars  = { 1 };
 
 			auto loglikelihood = [&the_data]( 
@@ -166,6 +166,8 @@ class TestComplete : public CxxTest::TestSuite
 			std::vector<prior_t> priors = { prior::normal( m, sqrt( v ) ) };
 			auto contr = FPChainController( loglikelihood, { init_pars },
 			  priors, 100000, 100000, output );
+			std::cout << "Data " << trace::details::mean_v( the_data ) << " "
+				<< trace::details::var_v( the_data ) << " " << the_data.size() << std::endl;
 			auto ts = contr.run();
 			auto tr = trace::read_trace_per_sample( output );
 			// Check results
@@ -176,7 +178,7 @@ class TestComplete : public CxxTest::TestSuite
 			std::map<double, double> myts;
 			for ( auto & temp_result : ts ) {
 				TS_ASSERT_DELTA( expected( temp_result.first, m, v ), 
-						temp_result.second, 50 );
+						temp_result.second, 0 );
 				myts[ temp_result.first] = expected( temp_result.first, m, v );
 			}
 			TS_ASSERT_DELTA( contr.integrate( myts ), 
