@@ -125,7 +125,6 @@ class TestComplete : public CxxTest::TestSuite
 			std::vector<double> lls;
 			// Calculate mean and var
 			double mean_y = trace::details::mean_v( the_data );
-			mean_y = 0;
 			double denom = the_data.size()*t+1/v;
 			double mu = (the_data.size()*t*mean_y+m/v)/denom;
 			double sd = sqrt(1.0/denom);
@@ -151,17 +150,22 @@ class TestComplete : public CxxTest::TestSuite
 			for ( auto & y : the_data ) {
 				independent -= 0.5 * pow(y-mean_y,2);
 			}
-			return [mean_y, independent, n]( const double &t, const double &m,
+			return [mean_y, independent, n, pi, the_data]( const double &t, const double &m,
 					const double &v ) {
-				return independent - (n/2.0)*(pow(m-mean_y,2)/(pow(v*m*t+1,2))) -
-					(n/2.0)*(1.0/(n*t+1/v));
+				/*return independent - (n/2.0)*(pow(m-mean_y,2)/(pow(v*m*t+1,2))) -
+					(n/2.0)*(1.0/(n*t+1/v));*/
+				double sum = -n/(2*(n*t+1/v))-n/2*log(2*pi);
+				double bla = (m/v+n*t*mean_y)/(n*t+1/v);
+				for ( auto & y : the_data )
+					sum -= 1/2*pow(bla-y,2);
+				return sum; 
 			};
 		}
 
 		void testPowerPosterior() {
 			// This test uses the analytical example in Friel & Pettitt 2008
 			// to test our results
-			auto the_data = generate_fake_data( 1000, 0, 1 );
+			auto the_data = generate_fake_data( 1000, -1, 1 );
 			std::vector<parameter_t> init_pars  = { 1 };
 
 			auto loglikelihood = [&the_data]( 

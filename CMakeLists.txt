@@ -41,6 +41,7 @@ install (FILES include/chainmcmc/chainmcmc.hh
 	include/chainmcmc/trace.hh
 	include/chainmcmc/logger.hh
 	include/chainmcmc/prior.hh
+	include/chainmcmc/parameter.hh
  	DESTINATION include/chainmcmc)
 
 #Documentation

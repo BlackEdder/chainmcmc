@@ -626,9 +626,9 @@ FPChainController::FPChainController( const likelihood_t &loglikelihood,
 		// At the end gather all traces
 		std::map<double, double> ts_exps;
 		for ( auto & temp_tr : traces ) {
-			std::cout << "Temp: " << temp_tr.first << std::endl;
+			/*std::cout << "Temp: " << temp_tr.first << std::endl;
 			std::cout << trace::means( temp_tr.second ) << std::endl;
-			std::cout << trace::variances_sample( temp_tr.second ) << std::endl;
+			std::cout << trace::variances_sample( temp_tr.second ) << std::endl;*/
 			std::vector< double > lls;
 			//std::cout << "Temp: " << temp_tr.first << std::endl;
 			// Calculate means
