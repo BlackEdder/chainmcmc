@@ -372,13 +372,13 @@ void ChainController::step() {
 		send( chains[ids[0]], atom("temp") );
 		receive( 
 			on(arg_match) >> [&temp1]( const double &ans ) {
-				temp1 = ans;
+				temp1 = 1.0/ans;
 			}
 		);
 		send( chains[ids[1]], atom("temp") );
 		receive( 
 			on(arg_match) >> [&temp2]( const double &ans ) {
-				temp2 = ans;
+				temp2 = 1.0/ans;
 			}
 		);
 		// Try swap
@@ -401,8 +401,8 @@ void ChainController::step() {
 			dt = 1.0/step::adapt_step_size( 1.0/dt, no_tries, no_accepts,
 				10, 0.2, 0.6 );
 
-			send( chains[ids[0]], atom("temp"), (1+dt*ids[1]) );
-			send( chains[ids[1]], atom("temp"), (1+dt*ids[0]) );
+			send( chains[ids[0]], atom("temp"), 1.0/(1+dt*ids[1]) );
+			send( chains[ids[1]], atom("temp"), 1.0/(1+dt*ids[0]) );
 		}
 
 		bool log_on = false;
@@ -428,7 +428,7 @@ void ChainController::step() {
 			ids.push_back( i );
 			double temp = (1+dt*i);
 			auto chain = spawn<Chain>( eng, loglikelihood, pars_v[i%pars_v.size()],
-					joint_prior, temp );
+					joint_prior, 1.0/temp );
 			logger = spawn<Logger>( out );
 			send( chain, atom("logger"), logger );
 			send( chain, atom("run"), no_steps_between_swaps );
