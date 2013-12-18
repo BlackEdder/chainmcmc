@@ -119,6 +119,29 @@ class TestComplete : public CxxTest::TestSuite
 			TS_ASSERT_DELTA( means[1], 0.2, 0.05 );
 		}
 
+		double numerical_expected( const double &t, const double &m,
+				const double &v, const likelihood_t &ll, const std::vector<double> &the_data, const joint_prior_t &joint_prior ) 
+		{
+			std::vector<double> lls;
+			// Calculate mean and var
+			double mean_y = trace::details::mean_v( the_data );
+			mean_y = 0;
+			double denom = the_data.size()*t+1/v;
+			double mu = (the_data.size()*t*mean_y+m/v)/denom;
+			double sd = sqrt(1.0/denom);
+			std::normal_distribution<double> rnorm( mu, sd );
+			for (size_t i = 0; i < 1000; ++i) {
+				// Generate fake parameter values
+				double par = rnorm( eng );
+				// Calculate ll for each
+				lls.push_back( //log(joint_prior( {par} )) + 
+						ll( { par } ) );
+			}
+			
+			// Return mean
+			return trace::details::mean_v( lls );
+		}
+
 		std::function<double( const double &, const double &, const double & )>
 			analytical_expected( const std::vector<double> &the_data ) {
 			double pi = 3.1415926535897;
@@ -138,7 +161,7 @@ class TestComplete : public CxxTest::TestSuite
 		void testPowerPosterior() {
 			// This test uses the analytical example in Friel & Pettitt 2008
 			// to test our results
-			auto the_data = generate_fake_data( 1000, -1, 1 );
+			auto the_data = generate_fake_data( 1000, 0, 1 );
 			std::vector<parameter_t> init_pars  = { 1 };
 
 			auto loglikelihood = [&the_data]( 
@@ -176,10 +199,15 @@ class TestComplete : public CxxTest::TestSuite
 
 			TS_ASSERT_EQUALS( ts.size(), 50 );
 			std::map<double, double> myts;
+			std::map<double, double> myts_numer;
 			for ( auto & temp_result : ts ) {
 				TS_ASSERT_DELTA( expected( temp_result.first, m, v ), 
 						temp_result.second, 0 );
 				myts[ temp_result.first] = expected( temp_result.first, m, v );
+				myts_numer[ temp_result.first ] = numerical_expected( temp_result.first,
+						m, v, loglikelihood, the_data, priors );
+				std::cout << temp_result.second << " " << myts[ temp_result.first ] <<
+					" " << myts_numer[ temp_result.first ] << std::endl;
 			}
 			TS_ASSERT_DELTA( contr.integrate( myts ), 
 					contr.integrate( ts ), 0.05 );

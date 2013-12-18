@@ -160,14 +160,14 @@ int main() {
 	double lml2 = log_marginal_likelihood( eng, ll2, init_pars1, priors1 );*/
 	std::stringstream output;
 	auto contr = FPChainController( ll1, { init_pars1 },
-			  priors1, 100000, 100000, output );
+			  priors1, 100000, 500000, output );
 	auto ts = contr.run();
 
 	double lml1 = contr.integrate( ts );
 	
 	output.clear();
 	auto contr2 = FPChainController( ll2, { init_pars1 },
-			  priors1, 100000, 100000, output );
+			  priors1, 100000, 500000, output );
 	ts = contr2.run();
 
 	double lml2 = contr2.integrate( ts );
@@ -177,6 +177,7 @@ int main() {
 	std::cout << lml2 << std::endl;
 	std::cout << lml2-lml1 << " " << lml1-lml2 << std::endl;
 	std::cout << exp(lml2-lml1) << " " << exp(lml1-lml2) << std::endl;
+	std::cout << exp(lml2)/exp(lml1) << " " << exp(lml1)/exp(lml2) << std::endl;
 
 	return 0;
 }
