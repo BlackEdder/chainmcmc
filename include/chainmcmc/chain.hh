@@ -269,6 +269,7 @@ class FPChainController {
 		std::map<double, double> run();
 
 		double integrate( const std::map<double, double>& es );
+		std::map<double, std::vector<trace::sample_t> > traces;
 
 	protected:
 		//! Number of populations (see Friel and Pettitt 2008)
@@ -283,7 +284,6 @@ class FPChainController {
 
 		std::map<size_t, FPChainState> chains;
 		std::map<double, actor_ptr> trace_actors;
-		std::map<double, std::vector<trace::sample_t> > traces;
 
 		likelihood_t log_likelihood;
 		joint_prior_t joint_prior;
