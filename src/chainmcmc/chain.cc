@@ -305,7 +305,7 @@ void Chain::step()  {
 	state = step::step( rnd_engine, 
 			std::move( state ), loglikelihood, joint_prior,
 			adapting, temperature );
-	if (state.generation%50 == 0 && log_on) {
+	if (state.generation%10 == 0 && log_on) {
 		std::stringstream s; // Collect output in stringstream for thread safety
 		bool first = true;
 		/*std::cout << state.loglikelihood << ", " << temperature << 
