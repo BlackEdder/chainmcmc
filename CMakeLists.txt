@@ -23,7 +23,7 @@ FILE(GLOB examplesRaw RELATIVE ${CMAKE_HOME_DIRECTORY} examples/*.cc)
 FOREACH(example ${examplesRaw})
 	get_filename_component( ex ${example} NAME_WE )
 	add_executable(${ex} EXCLUDE_FROM_ALL ${example})
- 	target_link_libraries(${ex} chainmcmc)
+ 	target_link_libraries(${ex} chainmcmc realtimeplot)
  	SET(examples ${examples};${ex})
 ENDFOREACH()
 
@@ -41,6 +41,7 @@ install (FILES include/chainmcmc/chainmcmc.hh
 	include/chainmcmc/trace.hh
 	include/chainmcmc/logger.hh
 	include/chainmcmc/prior.hh
+	include/chainmcmc/parameter.hh
  	DESTINATION include/chainmcmc)
 
 #Documentation

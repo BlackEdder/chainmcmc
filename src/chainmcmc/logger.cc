@@ -39,4 +39,21 @@ void Logger::init() {
 		}
 	);
 };
+
+TraceLogger::TraceLogger( std::vector<trace::sample_t> & tr ) : 
+	the_trace( tr ) {};
+
+void TraceLogger::init() {
+	become(
+		on(atom("append"), arg_match ) >> [this]( const 
+			std::string &str ) {
+			trace::sample_t sample = trace::sample_from_string( str );
+			the_trace.push_back( sample );
+		},
+		on(atom("close")) >> []() {
+			self->quit();
+			return atom("closed");
+		}
+	);
+};
 };

@@ -37,7 +37,9 @@ namespace step {
 		double pr = joint_prior( pars );
 		if ( pr == 0 )
 			return log(0);
-		return (log(pr) + ll( pars ))/temperature;
+		if (temperature == 0)
+			return log(pr);
+		return log(pr) + ll( pars )*temperature;
 	}
 
 	double mh_log_weight( const double &log_likelihood,
@@ -49,7 +51,7 @@ namespace step {
 		double pr = joint_prior( pars );
 		if ( pr == 0 )
 			return log(0);
-		return (log_likelihood+log(pr))/temperature;
+		return log_likelihood*temperature+log(pr);
 	}
 
 	/**
@@ -136,7 +138,7 @@ namespace step {
 
 	ParameterState adapt_parameter_sd( ParameterState && ps ) {
 		ps.sd = adapt_step_size( ps.sd, ps.no_tries, ps.no_accepts,
-				100, 0.20, 0.25, 10 );
+				100, 0.20, 0.25, 1 );
 		return ps;
 	}
 
@@ -153,10 +155,10 @@ namespace step {
 		proposed_parameters[state.current_parameter] = 
 			rparameter( eng, proposed_parameters[state.current_parameter], 
 					state.pss[state.current_parameter].sd	);
-		++state.pss[state.current_parameter].no_tries;
 
 		if (joint_prior( proposed_parameters ) == 0) {
 			accepted = false;
+			++state.pss[state.current_parameter].no_tries;
 		}
 
 		double old_lweight;
@@ -170,16 +172,19 @@ namespace step {
 				old_lweight = mh_log_weight( state.loglikelihood, state.parameters,
 						joint_prior, temperature );
 				if (!std::isnan( old_lweight)) {
-					double proposed_lweight = mh_log_weight( proposed_ll, proposed_parameters,
+					double proposed_lweight = 
+						mh_log_weight( proposed_ll, proposed_parameters,
 							joint_prior, temperature );
 					accepted = accept( eng, old_lweight, proposed_lweight, temperature );
+					// Only count when not nan/infinite
+					++state.pss[state.current_parameter].no_tries;
+					if (accepted)
+						++state.pss[state.current_parameter].no_accepts;
 				}
 			}
 		}
 
 		if (accepted) {
-			++state.pss[state.current_parameter].no_accepts;
-
 			state.loglikelihood = proposed_ll; 
 			state.parameters = proposed_parameters;
 		}
@@ -205,9 +210,6 @@ Chain::Chain( std::mt19937 &engine,
 	state.parameters = parameters;
 	for ( size_t i = 0; i < parameters.size(); ++i )
 		state.pss.push_back( step::ParameterState() );
-	state.pss[0].sd = 100;
-	state.pss[1].sd = 1;
-	state.pss[2].sd = 30000;
 }
 
 Chain::Chain( std::mt19937 &engine, 
@@ -223,9 +225,6 @@ Chain::Chain( std::mt19937 &engine,
 	state.parameters = parameters;
 	for ( size_t i = 0; i < parameters.size(); ++i )
 		state.pss.push_back( step::ParameterState() );
-	state.pss[0].sd = 100;
-	state.pss[1].sd = 1;
-	state.pss[2].sd = 30000;
 }
 void Chain::init()  {
 	become(
@@ -256,7 +255,7 @@ void Chain::init()  {
 		on( atom( "no_adapt" ) ) >> [this]() {
 			/*std::cout << "Sd ";
 			for ( auto & ps : state.pss )
-				std::cout << " " << ps.sd;
+				std::cout << " " << ps.sd << " " << ps.no_tries << " " << ps.no_accepts;
 			std::cout << std::endl;*/
 			adapting = false;
 		},
@@ -268,14 +267,31 @@ void Chain::init()  {
 			return step::mh_log_weight( state.loglikelihood, state.parameters,
 				joint_prior, 1 );
 		},
-		on( atom("temp" ), arg_match ) >> [this]( const double &new_temp ) {
+		on( atom("llikelih") ) >> [this]() {
+			return state.loglikelihood;
+		},
+		on( atom("temp"), arg_match ) >> [this]( const double &new_temp ) {
+			//std::cout << "Got new temp: " << new_temp << std::endl;
 			temperature = new_temp;
 		},
 		on( atom("temp" ) ) >> [this]() {
 			return temperature;
 		},
-		on( atom( "logger" ), arg_match ) >> [this]( const actor_ptr &new_logger ) {
-			send( logger, atom("close") );
+		on( atom( "parameters" ) ) >> [this] () {
+			std::stringstream s; // Collect output in stringstream for thread safety
+			bool first = true;
+			for ( auto & par : state.parameters ) {
+				if (first) {
+					s << par;
+					first = false;
+				} else
+					s	<< "\t" << par;
+			}
+			return s.str();
+		},
+		on( atom( "logger" ), arg_match ) >> [this]( 
+				const actor_ptr &new_logger ) {
+			//std::cout << "Got new logger" << std::endl;
 			logger = new_logger;
 		},
 		on( atom("close" ) ) >> [this]() {
@@ -286,7 +302,8 @@ void Chain::init()  {
 }
 
 void Chain::step()  {
-	state = step::step( rnd_engine, std::move( state ), loglikelihood, joint_prior,
+	state = step::step( rnd_engine, 
+			std::move( state ), loglikelihood, joint_prior,
 			adapting, temperature );
 	if (state.generation%50 == 0 && log_on) {
 		std::stringstream s; // Collect output in stringstream for thread safety
@@ -434,4 +451,194 @@ void ChainController::run( const size_t total_steps ) {
 		on( atom("closed") ) >> []() {}
 	);
 }
+
+FPChainController::FPChainController( const likelihood_t &loglikelihood, 
+		const std::vector<std::vector<parameter_t> > &pars_v,
+		const joint_prior_t &joint_prior, size_t warm_up, size_t total_steps,
+		std::ostream &out ) : 
+			warm_up( warm_up ), total_steps( total_steps ),
+			log_likelihood( loglikelihood ), joint_prior( joint_prior ), out( out ) {
+		setup( loglikelihood, pars_v, joint_prior );
+	}
+
+	likelihood_t FPChainController::heated_loglikelihood( 
+			const double &temp, const likelihood_t &loglikelihood ) {
+		return [temp, loglikelihood]( const trace::sample_t &pars ) {
+			if (temp == 0)
+				return 0.0;
+			return temp*loglikelihood( pars );
+		};
+	}
+
+	void FPChainController::setup( const likelihood_t &loglikelihood, 
+			const std::vector<std::vector<parameter_t> > &pars_v,
+			const joint_prior_t &joint_prior ) {
+		for (size_t i = 0; i < n; ++i) {
+			std::mt19937 eng;
+			eng.seed( engine() );
+
+			double temp = pow( ((double) i)/(n-1), c );
+			traces[temp] = std::vector<trace::sample_t>();
+			trace_actors[temp] = spawn<TraceLogger>( traces[temp] );
+			FPChainState state;
+			state.current_t = temp;
+			state.chain = spawn<Chain>( eng, 
+					loglikelihood, pars_v[i%pars_v.size()], joint_prior, temp );
+
+			send( state.chain, atom("logger"), trace_actors[temp] );
+		  chains[i] = state;
+		}
+	}
+
+
+	double FPChainController::integrate( const std::map<double, double>& es ) {
+		double sum = 0;
+		double old_t = es.begin()->first;
+		double old_exp = es.begin()->first;
+		for ( auto it = (++es.begin()); it != es.end(); ++it ) {
+			sum += (it->first - old_t)*(it->second-old_exp)/2.0;
+			old_t = it->first;
+			old_exp = it->second;
+		}
+		return sum;
+	}
+
+	std::map<double, double> FPChainController::run() {
+		std::vector<size_t> ids;
+		for (size_t i = 0; i < chains.size(); ++i)
+			ids.push_back( i );
+		size_t generation = 0;
+		// Run some steps normally
+		bool log_on = false;
+		// Initialize
+		for ( auto & id_chain_state : chains ) {
+			send( id_chain_state.second.chain, 
+					atom("run"), no_steps_between_swaps, log_on );
+		}
+
+		while (generation<warm_up+total_steps) {
+			// Log to trace logger if > warm_up
+			if (generation>warm_up && !log_on) {
+				log_on = true;
+				for ( auto & id_chain_state : chains ) 
+					// No more adaptation of step size
+					send( id_chain_state.second.chain, atom("no_adapt") );
+			}
+
+			// Try switching chains. Here we 10 times choose two chains/populations 
+			// and try to switch those
+			fisherYatesKSubsets( ids, ids.size(), engine );
+			size_t i = 0;
+			/*for (; i < 10; ++i ) {
+				auto chainState1 = chains[ ids[2*i] ];
+				auto chainState2 = chains[ ids[2*i+1] ];
+				//std::cout << ids[2*i] << " " << ids[2*i+1] << std::endl;
+				// Make sure we are finished running
+				std::vector<parameter_t> pars1;
+				std::vector<parameter_t> pars2;
+				send( chainState1.chain, atom("parameters") );
+				receive( 
+					on(arg_match) >> [&pars1]( const std::string &ans ) {
+						pars1 = trace::sample_from_string( ans );
+					}
+				);
+				send( chainState2.chain, atom("parameters") );
+				receive( 
+					on(arg_match) >> [&pars2]( const std::string &ans ) {
+						pars2 = trace::sample_from_string( ans );
+					}
+				);
+
+				double alpha = heated_loglikelihood( 
+						chainState2.current_t, log_likelihood )( 
+							pars1 ) + log( joint_prior( pars1 ) ) +
+						heated_loglikelihood(
+							chainState1.current_t, log_likelihood )( pars2 ) + 
+						log( joint_prior( pars2 ) ) - (
+						heated_loglikelihood( 
+							chainState1.current_t, log_likelihood )( 
+								pars1 ) + log( joint_prior( pars1 ) ) +
+						heated_loglikelihood(
+							chainState2.current_t, log_likelihood )( 
+								pars2 ) + log( joint_prior( pars2 ) )
+						);
+				alpha = exp( alpha );
+				bool accepted = false;
+				if ( alpha > 1 )
+					accepted = true;
+				else {
+					std::uniform_real_distribution<double> unif(0,1);
+					if ( unif( engine ) < alpha )
+						accepted = true;
+				}
+				if (accepted) {
+					double tmp_t = chainState1.current_t;
+					chainState1.current_t = chainState2.current_t;
+					chainState2.current_t = tmp_t;
+					// Send new temp
+					send( chainState1.chain, atom("temp"), chainState1.current_t );
+					// Send new logger
+					send( chainState1.chain, atom("logger"), 
+							trace_actors[chainState1.current_t] );
+					send( chainState2.chain, atom("temp"), chainState2.current_t );
+					// Send new logger
+					send( chainState2.chain, atom("logger"), 
+							trace_actors[chainState2.current_t] );
+					send( chainState1.chain, 
+							atom("run"), no_steps_between_swaps, log_on );
+					send( chainState2.chain, 
+							atom("run"), no_steps_between_swaps, log_on );
+				};
+			}*/
+			for ( ; i < chains.size(); ++i ) {
+			//for ( i = 2*i+2; i < chains.size(); ++i ) {
+				send( chains[ ids[i] ].chain, 
+						atom("run"), no_steps_between_swaps, log_on );
+			}
+			
+			// Repeat till > total_steps + warm up
+			generation += no_steps_between_swaps + 1;
+		}
+		
+		// Close all chains
+		for ( auto & id_chain_state : chains ) 
+			send( id_chain_state.second.chain, atom("close") );
+
+		size_t i = 0;
+		receive_for( i, chains.size() ) (
+				on( atom("closed") ) >> []() {}
+		);
+
+		// Close all loggers 
+		for ( auto & temp_tr_actor : trace_actors ) 
+			send( temp_tr_actor.second, atom("close") );
+
+		i = 0;
+		receive_for( i, trace_actors.size() ) (
+				on( atom("closed") ) >> []() {}
+		);
+
+
+		// Copy traces[1] into out
+		for ( auto & sample : traces[1] )
+		 	out << sample << std::endl;
+
+		// At the end gather all traces
+		std::map<double, double> ts_exps;
+		for ( auto & temp_tr : traces ) {
+			/*std::cout << "Temp: " << temp_tr.first << std::endl;
+			std::cout << trace::means( temp_tr.second ) << std::endl;
+			std::cout << trace::variances_sample( temp_tr.second ) << std::endl;*/
+			std::vector< double > lls;
+			//std::cout << "Temp: " << temp_tr.first << std::endl;
+			// Calculate means
+			for ( auto & sample : temp_tr.second ) {
+				lls.push_back( //log( joint_prior( sample ) ) + 
+						log_likelihood( sample ) );
+			}
+			ts_exps[temp_tr.first] = trace::details::mean_v( lls );
+		}
+		// Calculate marginal log likelihood
+		return ts_exps;
+	}
 };

@@ -29,30 +29,71 @@
 #include "chainmcmc/file.hh"
 namespace chainmcmc {
 	namespace trace {
+		namespace details {
+			double mean_v( const std::vector<double> &v ) {
+				double sum = std::accumulate( v.begin(), v.end(), 0.0, 
+						[]( const double a, const double b ) { return a+b; } );
+				return sum/v.size();
+			}
 
-	std::vector<parameter_t> sample_from_string( const std::string & line ) {
-		std::vector<std::string> strs;
-		boost::split( strs, line, boost::is_any_of( "\t" ) );
+			double var_v( const std::vector<double> &v ) {
+				double mean = mean_v( v );
+				double var_sum = std::accumulate( v.begin(), v.end(), 0.0, 
+						[&mean]( const double a, const double b ) { 
+						return a+pow(b-mean,2); } );
+				return var_sum/v.size();
+			}
 
-		std::vector<parameter_t> pars;
-		for ( auto & str : strs )
-			pars.push_back( boost::lexical_cast<double>( str ) );
-		return pars;
-	}
+			std::pair<double, double> confidence( const double interval,
+					std::vector<double> v ) {
+				std::pair<double, double> result;
+				std::sort( v.begin(), v.end() );
+				double alpha = (1.0-interval)/2.0;
+				result.first = v[ceil(alpha*v.size())];
+				result.second = v[floor((1.0-alpha)*v.size())];
+				return result;
+			}
+
+			double cov_v( const std::vector<double> &v,
+					const std::vector<double> &w ) {
+				if ( v.size() != w.size() ) {
+					std::cerr << "Vectors need to be the same size" << std::endl;
+					throw;
+				}
+				double meanv = mean_v( v );
+				double meanw = mean_v( w );
+				double cov = 0;
+				for ( size_t i = 0; i < v.size(); ++i ) {
+					cov += (v[i] - meanv)*(w[i]-meanw);
+				}
+				return cov/v.size();
+			}
+		};
 
 
-	std::vector<std::vector<parameter_t> > read_trace_per_sample( 
-			std::istream& infile, const size_t tail ) {
-		if (tail != 0) {
-			file_helpers::move_last_lines( infile, tail );
+		std::vector<parameter_t> sample_from_string( const std::string & line ) {
+			std::vector<std::string> strs;
+			boost::split( strs, line, boost::is_any_of( "\t" ) );
+
+			std::vector<parameter_t> pars;
+			for ( auto & str : strs )
+				pars.push_back( boost::lexical_cast<double>( str ) );
+			return pars;
 		}
-		return follow_trace_per_sample( infile );
-	}
 
-	std::vector<std::vector<double> > read_trace( 
-			const std::string & fname ) {
-		std::vector<std::vector<double> > trace;
-		std::ifstream infile;
+
+		std::vector<std::vector<parameter_t> > read_trace_per_sample( 
+				std::istream& infile, const size_t tail ) {
+			if (tail != 0) {
+				file_helpers::move_last_lines( infile, tail );
+			}
+			return follow_trace_per_sample( infile );
+		}
+
+		std::vector<std::vector<double> > read_trace( 
+				const std::string & fname ) {
+			std::vector<std::vector<double> > trace;
+			std::ifstream infile;
 		infile.open( fname );
 		auto totranspose = read_trace_per_sample( infile, 0 );
 		// Now transpose

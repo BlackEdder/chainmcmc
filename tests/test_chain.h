@@ -117,7 +117,7 @@ class TestChain : public CxxTest::TestSuite
 			for ( size_t i = 0; i<10; ++i ) {
 				double ratio = pow(1.0/1.1, 1/1.5 );
 				bool result = accept( eng2, ll, new_pars, old_pars, 
-						{ prior }, 1.5 );
+						{ prior }, 1/1.5 );
 				if (result)
 					++true_count;
 				std::uniform_real_distribution<double> unif(0,1);

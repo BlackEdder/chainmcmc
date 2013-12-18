@@ -5,7 +5,7 @@
   
   This file is part of chainmcmc.
   
- 	chainmcmc is free software; you can redistribute it and/or modify
+  chainmcmc is free software; you can redistribute it and/or modify
   it under the terms of the GNU General Public License as published by
   the Free Software Foundation; either version 3 of the License, or
   (at your option) any later version.
@@ -20,33 +20,11 @@
 
   -------------------------------------------------------------------
 */
-#ifndef LOGGER_HH 
-#define LOGGER_HH
 
-#include <cppa/cppa.hpp>
+#ifndef PARAMETER_HH
+#define PARAMETER_HH
 
-#include "chainmcmc/trace.hh"
-
-namespace chainmcmc {
-	using namespace cppa;
-
-	class Logger : public event_based_actor {
-		public:
-			Logger( std::ostream & out );
-
-			void init();
-		protected:
-			std::ostream & out;
-	};
-
-	class TraceLogger : public event_based_actor {
-		public:
-			TraceLogger( std::vector<trace::sample_t> & tr );
-
-			void init();
-		protected:
-			std::vector<trace::sample_t> & the_trace;
-	};
+namespace {
+	typedef double parameter_t;
 };
-
 #endif

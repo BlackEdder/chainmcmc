@@ -23,7 +23,9 @@
 
 #ifndef MCMC_HH
 #define MCMC_HH
+#include "chainmcmc/parameter.hh"
 #include "chainmcmc/trace.hh"
 #include "chainmcmc/chain.hh"
 #include "chainmcmc/logger.hh"
+#include "chainmcmc/prior.hh"
 #endif

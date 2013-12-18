@@ -28,6 +28,7 @@
 
 #include <cppa/cppa.hpp>
 
+#include "chainmcmc/trace.hh"
 #include "chainmcmc/logger.hh"
 #include "chainmcmc/prior.hh"
 
@@ -228,6 +229,76 @@ class ChainController {
 				const joint_prior_t &joint_prior,
 				size_t no_chains, std::ostream &out );
 		void run(const size_t total_steps);
+};
+
+
+struct FPChainState {
+	double current_t;
+	actor_ptr chain;
+};
+
+/**
+ * \brief Chain Controller to implement power posteriors
+ *
+ * This method provides both hot cold chain mixing, for searching through parameter space and allows us to calculate the posterior probability distribution of the model, useful for model comparison.
+ *
+ * Following:
+		Friel, N., and A. N. Pettitt. 2008. “Marginal Likelihood Estimation via Power Posteriors.” Journal of the Royal Statistical Society: Series B (Statistical Methodology) 70 (3): 589–607. doi:10.1111/j.1467-9868.2007.00650.x.
+
+ * Some implementation notes
+ * Keep a population of chains with different ts, also keep a map of each t 
+ * with a trace. Ideally the trace should contain samples and their 
+ * likelihood value. Actually since we need flat log likelihood and not the hot values, it is not that useful to save the likelihood value. 
+ * This map can be used at the end to calculate the posterior probability 
+ * following Friel and Pettitt
+ */
+class FPChainController {
+	public:
+		std::mt19937 engine;
+
+		FPChainController( const likelihood_t &loglikelihood, 
+				const std::vector<std::vector<parameter_t> > &pars_v,
+				const joint_prior_t &jp, size_t warm_up, size_t total_steps, 
+				std::ostream &out = std::cout );
+		
+		/**
+		 * \brief Run the mcmc and returns a map of temperatures and mean log likelihoods
+		 *
+		 * This map is used to calculate the marginal log likelihood
+		 */
+		std::map<double, double> run();
+
+		double integrate( const std::map<double, double>& es );
+
+	protected:
+		//! Number of populations (see Friel and Pettitt 2008)
+		size_t n = 50;
+		//! Distribution of populations (see Friel and Pettitt 2008)
+		size_t c = 5;
+
+		size_t no_steps_between_swaps = 50; //! Try swap after this many steps
+
+		size_t warm_up = 10000;
+		size_t total_steps = 10000;
+
+		std::map<size_t, FPChainState> chains;
+		std::map<double, actor_ptr> trace_actors;
+		std::map<double, std::vector<trace::sample_t> > traces;
+
+		likelihood_t log_likelihood;
+		joint_prior_t joint_prior;
+
+		std::ostream &out;
+		/**
+		 * \brief Heat the log likelihood by certain temperature
+		 */
+		likelihood_t	heated_loglikelihood( const double &temp,
+				const likelihood_t &loglikelihood );
+
+		void setup( const likelihood_t &loglikelihood, 
+				const std::vector<std::vector<parameter_t> > &pars_v,
+				const joint_prior_t &joint_prior );
+
 };
 };
 #endif
