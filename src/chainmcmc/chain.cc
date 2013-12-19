@@ -573,15 +573,7 @@ FPChainController::FPChainController( const likelihood_t &loglikelihood,
 						accepted = true;
 				}
 				if (accepted) {
-					std::swap( chains[ids[i]].current_t, chains[ids[i]].current_t );
-					std::swap( chains[ids[i]].logger, chains[ids[i]].logger );
-					// Send new temp
-					send( chainState1.chain, atom("temp"), chainState1.current_t );
-					// Send new logger
-					send( chainState1.chain, atom("logger"), chainState1.logger );
-					send( chainState2.chain, atom("temp"), chainState2.current_t );
-					// Send new logger
-					send( chainState2.chain, atom("logger"), chainState2.logger );
+					temperature::swap( chains[ids[i]], chains[ids[i]] );
 				};
 				send( chainState1.chain, 
 						atom("run"), no_steps_between_swaps, log_on );

@@ -28,5 +28,16 @@ namespace chainmcmc {
 		bool ChainState::operator<( const ChainState &cs ) {
 			return current_t < cs.current_t;
 		}
+
+		void swap( ChainState &chainState1, ChainState &chainState2 ) {
+			std::swap( chainState1.chain, chainState2.chain );
+			// Send new temp
+			send( chainState1.chain, atom("temp"), chainState1.current_t );
+			// Send new logger
+			send( chainState1.chain, atom("logger"), chainState1.logger );
+			send( chainState2.chain, atom("temp"), chainState2.current_t );
+			// Send new logger
+			send( chainState2.chain, atom("logger"), chainState2.logger );
+		}
 	};
 };

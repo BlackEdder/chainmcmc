@@ -42,6 +42,8 @@ namespace chainmcmc {
 
 				bool operator<( const ChainState &cs ); 
 		};
+
+		void swap( ChainState & cs1, ChainState & cs2 );
 	};
 };
 #endif
