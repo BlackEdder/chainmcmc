@@ -479,14 +479,13 @@ FPChainController::FPChainController( const likelihood_t &loglikelihood,
 
 			double temp = pow( ((double) i)/(n-1), c );
 			traces[temp] = std::vector<trace::sample_t>();
-			trace_actors[temp] = spawn<TraceLogger>( traces[temp] );
 			temperature::ChainState state;
 			state.current_t = temp;
 			state.chain = spawn<Chain>( eng, 
 					loglikelihood, pars_v[i%pars_v.size()], joint_prior, temp );
-			state.logger = trace_actors[temp];
+			state.logger = spawn<TraceLogger>( traces[temp] );
 
-			send( state.chain, atom("logger"), trace_actors[temp] );
+			send( state.chain, atom("logger"), state.logger );
 		  chains[i] = state;
 		}
 	}
@@ -575,15 +574,14 @@ FPChainController::FPChainController( const likelihood_t &loglikelihood,
 				}
 				if (accepted) {
 					std::swap( chains[ids[i]].current_t, chains[ids[i]].current_t );
+					std::swap( chains[ids[i]].logger, chains[ids[i]].logger );
 					// Send new temp
 					send( chainState1.chain, atom("temp"), chainState1.current_t );
 					// Send new logger
-					send( chainState1.chain, atom("logger"), 
-							trace_actors[chainState1.current_t] );
+					send( chainState1.chain, atom("logger"), chainState1.logger );
 					send( chainState2.chain, atom("temp"), chainState2.current_t );
 					// Send new logger
-					send( chainState2.chain, atom("logger"), 
-							trace_actors[chainState2.current_t] );
+					send( chainState2.chain, atom("logger"), chainState2.logger );
 				};
 				send( chainState1.chain, 
 						atom("run"), no_steps_between_swaps, log_on );
@@ -608,12 +606,12 @@ FPChainController::FPChainController( const likelihood_t &loglikelihood,
 				on( atom("closed") ) >> []() {}
 		);
 
-		// Close all loggers 
-		for ( auto & temp_tr_actor : trace_actors ) 
-			send( temp_tr_actor.second, atom("close") );
+		// Close all loggers. Note that all chains need to be closed first
+		for ( auto & id_chain_state : chains ) 
+			send( id_chain_state.second.logger, atom("close") );
 
 		i = 0;
-		receive_for( i, trace_actors.size() ) (
+		receive_for( i, chains.size() ) (
 				on( atom("closed") ) >> []() {}
 		);
 

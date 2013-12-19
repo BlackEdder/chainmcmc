@@ -279,7 +279,6 @@ class FPChainController {
 		size_t total_steps = 10000;
 
 		std::map<size_t, temperature::ChainState> chains;
-		std::map<double, actor_ptr> trace_actors;
 
 		likelihood_t log_likelihood;
 		joint_prior_t joint_prior;

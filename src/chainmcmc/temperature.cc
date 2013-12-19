@@ -25,5 +25,8 @@
 
 namespace chainmcmc {
 	namespace temperature {
+		bool ChainState::operator<( const ChainState &cs ) {
+			return current_t < cs.current_t;
+		}
 	};
 };

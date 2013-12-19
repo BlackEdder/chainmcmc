@@ -34,10 +34,13 @@ namespace chainmcmc {
 	namespace temperature {
 		using namespace cppa;
 
-		struct ChainState {
-			double current_t;
-			actor_ptr chain;
-			actor_ptr logger;
+		class ChainState {
+			public:
+				double current_t;
+				actor_ptr chain;
+				actor_ptr logger;
+
+				bool operator<( const ChainState &cs ); 
 		};
 	};
 };
