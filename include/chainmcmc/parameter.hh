@@ -24,7 +24,7 @@
 #ifndef PARAMETER_HH
 #define PARAMETER_HH
 
-namespace {
+namespace chainmcmc {
 	typedef double parameter_t;
 };
 #endif
