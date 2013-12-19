@@ -529,9 +529,10 @@ FPChainController::FPChainController( const likelihood_t &loglikelihood,
 			// and try to switch those
 			fisherYatesKSubsets( ids, ids.size(), engine );
 			size_t i = 0;
-			/*for (; i < 10; ++i ) {
-				auto chainState1 = chains[ ids[2*i] ];
-				auto chainState2 = chains[ ids[2*i+1] ];
+			size_t max = std::min( (size_t) 20, chains.size()-1 );
+			for (; i < max; i+=2 ) {
+				auto chainState1 = chains[ ids[i] ];
+				auto chainState2 = chains[ ids[i+1] ];
 				//std::cout << ids[2*i] << " " << ids[2*i+1] << std::endl;
 				// Make sure we are finished running
 				std::vector<parameter_t> pars1;
@@ -572,9 +573,7 @@ FPChainController::FPChainController( const likelihood_t &loglikelihood,
 						accepted = true;
 				}
 				if (accepted) {
-					double tmp_t = chainState1.current_t;
-					chainState1.current_t = chainState2.current_t;
-					chainState2.current_t = tmp_t;
+					std::swap( chains[ids[i]].current_t, chains[ids[i]].current_t );
 					// Send new temp
 					send( chainState1.chain, atom("temp"), chainState1.current_t );
 					// Send new logger
@@ -584,14 +583,13 @@ FPChainController::FPChainController( const likelihood_t &loglikelihood,
 					// Send new logger
 					send( chainState2.chain, atom("logger"), 
 							trace_actors[chainState2.current_t] );
-					send( chainState1.chain, 
-							atom("run"), no_steps_between_swaps, log_on );
-					send( chainState2.chain, 
-							atom("run"), no_steps_between_swaps, log_on );
 				};
-			}*/
-			for ( ; i < chains.size(); ++i ) {
-			//for ( i = 2*i+2; i < chains.size(); ++i ) {
+				send( chainState1.chain, 
+						atom("run"), no_steps_between_swaps, log_on );
+				send( chainState2.chain, 
+						atom("run"), no_steps_between_swaps, log_on );
+			}
+			for (; i < chains.size(); ++i ) {
 				send( chains[ ids[i] ].chain, 
 						atom("run"), no_steps_between_swaps, log_on );
 			}
