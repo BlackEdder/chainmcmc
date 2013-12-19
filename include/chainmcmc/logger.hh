@@ -46,6 +46,9 @@ namespace chainmcmc {
 			void init();
 		protected:
 			std::vector<trace::sample_t> & the_trace;
+
+			double sum_ll = 0;
+			size_t count_ll = 0;
 	};
 };
 

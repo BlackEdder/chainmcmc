@@ -50,6 +50,14 @@ void TraceLogger::init() {
 			trace::sample_t sample = trace::sample_from_string( str );
 			the_trace.push_back( sample );
 		},
+		on(atom("ll"), arg_match ) >> [this]( const 
+			double &ll ) {
+			sum_ll += ll;
+			++count_ll;
+		},
+		on(atom("mean_ll")) >> [this]() {
+			return sum_ll/count_ll;
+		},
 		on(atom("close")) >> []() {
 			self->quit();
 			return atom("closed");

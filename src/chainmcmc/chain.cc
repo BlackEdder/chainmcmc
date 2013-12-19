@@ -226,6 +226,7 @@ Chain::Chain( std::mt19937 &engine,
 	for ( size_t i = 0; i < parameters.size(); ++i )
 		state.pss.push_back( step::ParameterState() );
 }
+
 void Chain::init()  {
 	become(
 		on( atom( "run" ), arg_match ) >> [this]( const int no ) {
@@ -321,6 +322,7 @@ void Chain::step()  {
 				s	<< "\t" << par;
 		}
 		send( logger, atom("append"), s.str() ); 
+		send( logger, atom("ll"), state.loglikelihood ); 
 	}
 }
 
@@ -557,7 +559,7 @@ FPChainController::FPChainController( const likelihood_t &loglikelihood,
 		}
 		
 		// Close all chains
-		for ( auto & id_chain_state : chains ) 
+		for ( auto & id_chain_state : chains )
 			send( id_chain_state.second.chain, atom("close") );
 
 		size_t i = 0;
@@ -566,35 +568,23 @@ FPChainController::FPChainController( const likelihood_t &loglikelihood,
 		);
 
 		// Close all loggers. Note that all chains need to be closed first
-		for ( auto & id_chain_state : chains ) 
+		std::map<double, double> ts_exps;
+		for ( auto & id_chain_state : chains ) {
+			send( id_chain_state.second.logger, atom("mean_ll") );
+			double mean_ll;
+			receive( on( arg_match ) >> [&mean_ll] ( const double &mll ) 
+					{ mean_ll = mll; } );
+			ts_exps[id_chain_state.second.current_t] = mean_ll;
 			send( id_chain_state.second.logger, atom("close") );
-
-		i = 0;
-		receive_for( i, chains.size() ) (
+			receive( 
 				on( atom("closed") ) >> []() {}
-		);
-
+			);
+		}
 
 		// Copy traces[1] into out
 		for ( auto & sample : traces[1] )
 		 	out << sample << std::endl;
 
-		// At the end gather all traces
-		std::map<double, double> ts_exps;
-		for ( auto & temp_tr : traces ) {
-			/*std::cout << "Temp: " << temp_tr.first << std::endl;
-			std::cout << trace::means( temp_tr.second ) << std::endl;
-			std::cout << trace::variances_sample( temp_tr.second ) << std::endl;*/
-			std::vector< double > lls;
-			//std::cout << "Temp: " << temp_tr.first << std::endl;
-			// Calculate means
-			for ( auto & sample : temp_tr.second ) {
-				lls.push_back( //log( joint_prior( sample ) ) + 
-						log_likelihood( sample ) );
-			}
-			ts_exps[temp_tr.first] = trace::details::mean_v( lls );
-		}
-		// Calculate marginal log likelihood
 		return ts_exps;
 	}
 };
