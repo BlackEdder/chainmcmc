@@ -31,6 +31,7 @@
 #include "chainmcmc/trace.hh"
 #include "chainmcmc/logger.hh"
 #include "chainmcmc/prior.hh"
+#include "chainmcmc/temperature.hh"
 
 namespace chainmcmc {
 using namespace cppa;
@@ -232,11 +233,6 @@ class ChainController {
 };
 
 
-struct FPChainState {
-	double current_t;
-	actor_ptr chain;
-};
-
 /**
  * \brief Chain Controller to implement power posteriors
  *
@@ -282,7 +278,7 @@ class FPChainController {
 		size_t warm_up = 10000;
 		size_t total_steps = 10000;
 
-		std::map<size_t, FPChainState> chains;
+		std::map<size_t, temperature::ChainState> chains;
 		std::map<double, actor_ptr> trace_actors;
 
 		likelihood_t log_likelihood;

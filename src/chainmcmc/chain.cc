@@ -480,10 +480,11 @@ FPChainController::FPChainController( const likelihood_t &loglikelihood,
 			double temp = pow( ((double) i)/(n-1), c );
 			traces[temp] = std::vector<trace::sample_t>();
 			trace_actors[temp] = spawn<TraceLogger>( traces[temp] );
-			FPChainState state;
+			temperature::ChainState state;
 			state.current_t = temp;
 			state.chain = spawn<Chain>( eng, 
 					loglikelihood, pars_v[i%pars_v.size()], joint_prior, temp );
+			state.logger = trace_actors[temp];
 
 			send( state.chain, atom("logger"), trace_actors[temp] );
 		  chains[i] = state;

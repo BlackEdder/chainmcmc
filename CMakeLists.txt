@@ -15,7 +15,7 @@ include_directories("include")
 
 SET (CMAKE_LIBRARY_OUTPUT_DIRECTORY lib)
 add_library( chainmcmc SHARED
-	src/chainmcmc/chain.cc;src/chainmcmc/trace.cc;src/chainmcmc/file.cc;src/chainmcmc/logger.cc;src/chainmcmc/prior.cc)
+	src/chainmcmc/chain.cc;src/chainmcmc/trace.cc;src/chainmcmc/file.cc;src/chainmcmc/logger.cc;src/chainmcmc/prior.cc;src/chainmcmc/temperature.cc)
 target_link_libraries( chainmcmc ${CPPA})
 
 SET (CMAKE_RUNTIME_OUTPUT_DIRECTORY bin)
@@ -42,6 +42,7 @@ install (FILES include/chainmcmc/chainmcmc.hh
 	include/chainmcmc/logger.hh
 	include/chainmcmc/prior.hh
 	include/chainmcmc/parameter.hh
+	include/chainmcmc/temperature.hh
  	DESTINATION include/chainmcmc)
 
 #Documentation
