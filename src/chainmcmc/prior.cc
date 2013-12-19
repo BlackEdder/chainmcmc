@@ -39,7 +39,7 @@ namespace chainmcmc {
 	{
 		joint_func =  [&priors]( const std::vector<parameter_t> &pars ) {
 			double prob = 1;
-			for ( int i = 0; i < pars.size(); ++i ) {
+			for ( size_t i = 0; i < pars.size(); ++i ) {
 				double pr = priors[i](pars[i]);
 				if (pr == 0)
 					return 0.0;
@@ -54,7 +54,7 @@ namespace chainmcmc {
 		joint_func =  [&args]( const std::vector<parameter_t> &pars ) {
 			double prob = 1;
 			auto it = args.begin();
-			for ( int i = 0; i < pars.size(); ++i ) {
+			for ( size_t i = 0; i < pars.size(); ++i ) {
 				double pr = (*it)(pars[i]);
 				if (pr == 0)
 					return 0.0;
