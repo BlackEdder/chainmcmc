@@ -175,63 +175,6 @@ std::vector<T> fisherYatesKSubsets( std::vector<T> &v,
 	return ans; 
 };
 
-/**
- * \brief Control the hot and cold chains
- *
- * Implemented following:
- * Parallel Metropolis Coupled Markov Chain Monte Carlo for Bayesian Phylogenetic Inference, 2004, Altekar et al
- *
- * General approach: 
- * Take a number of chains of different temperatures 
- * 	(one is the cold chain with temp 1).
- * Run them for a certain amount of steps
- * Choose two random ones and try to swap them
- * If accepted then swap temperatures.
- * 
- * For optimal performace we first choose the two to swap,
- * Then tell those two to run n generations, and all the others run 2n 
- * Then we try/perform the swap 
- * Tell the original two to run another n generations. Choose two and tell the
- * others to run to 3n generations etc
- */
-class ChainController {
-	public:
-		ChainController( const likelihood_t &loglikelihood, 
-		const std::vector<parameter_t> &parameters,
-		const joint_prior_t &jp, size_t warm_up, size_t total_steps,
-			size_t no_threads, std::ostream &out = std::cout );
-
-		ChainController( const likelihood_t &loglikelihood, 
-		const std::vector<std::vector<parameter_t> > &pars_v,
-		const joint_prior_t &jp, size_t warm_up, size_t total_steps,
-			size_t no_threads, std::ostream &out = std::cout );
-
-
-		void step();
-
-	protected:
-		std::mt19937 engine;
-		size_t no_chains = 8;
-		double dt = 0.1;
-		std::vector<size_t> ids;
-		std::map<size_t, actor_ptr> chains;
-
-		size_t no_tries = 0;
-		size_t no_accepts = 0;
-
-		int warm_up = 0;
-
-		size_t no_steps_between_swaps = 15; //! Try swap after this many steps
-
-		actor_ptr logger;
-
-		void setup( const likelihood_t &loglikelihood, 
-				const std::vector<std::vector<parameter_t> > &pars_v,
-				const joint_prior_t &joint_prior,
-				size_t no_chains, std::ostream &out );
-		void run(const size_t total_steps);
-};
-
 
 /**
  * \brief Chain Controller to implement power posteriors
@@ -294,6 +237,27 @@ class FPChainController {
 				const std::vector<std::vector<parameter_t> > &pars_v,
 				const joint_prior_t &joint_prior );
 
+};
+
+/**
+ * \brief Control the hot and cold chains
+ *
+ * This is a basically the same as FPChainController, but with the ability to
+ * set the population (no threads) size. Unless a lot of populations are chosen
+ * this should not be used to calculate the marginal likelihood of models, i.e.
+ * it can be used for fitting of parameters but not for model comparisons.
+*/
+class ChainController : public FPChainController {
+	public:
+		ChainController( const likelihood_t &loglikelihood, 
+		const std::vector<parameter_t> &parameters,
+		const joint_prior_t &jp, size_t warm_up, size_t total_steps,
+			size_t no_threads, std::ostream &out = std::cout );
+
+		ChainController( const likelihood_t &loglikelihood, 
+		const std::vector<std::vector<parameter_t> > &pars_v,
+		const joint_prior_t &jp, size_t warm_up, size_t total_steps,
+			size_t no_threads, std::ostream &out = std::cout );
 };
 };
 #endif

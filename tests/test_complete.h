@@ -69,6 +69,7 @@ class TestComplete : public CxxTest::TestSuite
 			std::stringstream output;
 			auto contr = ChainController( loglikelihood, pars,
 					priors, 10000, 10000, 4, output );
+			contr.run();
 
 			// Use trace to analyse ostringstream
 			auto tr = trace::read_trace_per_sample( output );

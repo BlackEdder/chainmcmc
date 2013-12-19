@@ -326,137 +326,6 @@ void Chain::step()  {
 	}
 }
 
-ChainController::ChainController( const likelihood_t &loglikelihood, 
-		const std::vector<parameter_t> &parameters,
-		const joint_prior_t &joint_prior, size_t warm_up, size_t total_steps,
-		size_t no_chains, std::ostream &out ) 
-	: no_chains( no_chains ), warm_up( warm_up ) {
-		setup( loglikelihood, {parameters}, joint_prior, no_chains, out );
-
-		run( total_steps );
-	}
-
-
-ChainController::ChainController( const likelihood_t &loglikelihood, 
-		const std::vector<std::vector<parameter_t> > &pars_v,
-		const joint_prior_t &joint_prior, size_t warm_up, size_t total_steps,
-		size_t no_chains, std::ostream &out ) : no_chains( no_chains ), warm_up( warm_up ) {
-
-	setup( loglikelihood, pars_v, joint_prior, no_chains, out );
-
-	run( total_steps );
-}
-
-void ChainController::step() {
-	warm_up -= no_steps_between_swaps;
-	if (chains.size()>1) {
-		fisherYatesKSubsets( ids, 2, engine );
-		for ( size_t i = 2; i < ids.size(); ++i ) {
-			bool log_on = false;
-			if (warm_up<0 && ids[i]==0)
-				log_on = true;
-			send( chains[ids[i]], atom("run"), no_steps_between_swaps, log_on );
-		}
-
-		double weight1, weight2;
-		double temp1, temp2;
-
-		send( chains[ids[0]], atom("log_weight") );
-		receive( 
-			on(arg_match) >> [&weight1]( const double &ans ) {
-				weight1 = ans;
-			}
-		);
-		send( chains[ids[1]], atom("log_weight") );
-		receive( 
-			on(arg_match) >> [&weight2]( const double &ans ) {
-				weight2 = ans;
-			}
-		);
-
-		send( chains[ids[0]], atom("temp") );
-		receive( 
-			on(arg_match) >> [&temp1]( const double &ans ) {
-				temp1 = 1.0/ans;
-			}
-		);
-		send( chains[ids[1]], atom("temp") );
-		receive( 
-			on(arg_match) >> [&temp2]( const double &ans ) {
-				temp2 = 1.0/ans;
-			}
-		);
-		// Try swap
-		// ratio = weight2^(1/temp1)*weight1^(1/temp2)/(weight2^(1/temp2)*weight1^(1/temp1))
-		double log_ratio = ((temp2-temp1)*weight2+(temp1-temp2)*weight1)/(temp1*temp2);
-		bool accept = false;
-		if (std::isfinite(log_ratio)) { // Only consider switching when ratio is a finite number
-			if (log_ratio > 0)
-				accept = true;
-			else {
-				std::uniform_real_distribution<double> unif(0,1);
-				if (log(unif(engine))<log_ratio)
-					accept = true;
-			}
-		}
-		++no_tries;
-		if (accept) {
-			++no_accepts;
-
-			dt = 1.0/step::adapt_step_size( 1.0/dt, no_tries, no_accepts,
-				10, 0.2, 0.6 );
-
-			send( chains[ids[0]], atom("temp"), 1.0/(1+dt*ids[1]) );
-			send( chains[ids[1]], atom("temp"), 1.0/(1+dt*ids[0]) );
-		}
-
-		bool log_on = false;
-		if (warm_up<0 && ids[1]==0)
-			log_on = true;
-
-		send( chains[ids[1]], atom("run"), no_steps_between_swaps, log_on );
-	}
-
-	bool log_on = false;
-	if (warm_up<0 && ids[0]==0)
-		log_on = true;
-	send( chains[ids[0]], atom("run"), no_steps_between_swaps, log_on );
-}
-
-	void ChainController::setup( const likelihood_t &loglikelihood, 
-			const std::vector<std::vector<parameter_t> > &pars_v,
-			const joint_prior_t &joint_prior,
-			size_t no_chains, std::ostream &out ) {
-		for ( size_t i = 0; i < no_chains; ++i ) {
-			std::mt19937 eng;
-			eng.seed( engine() );
-			ids.push_back( i );
-			double temp = (1+dt*i);
-			auto chain = spawn<Chain>( eng, loglikelihood, pars_v[i%pars_v.size()],
-					joint_prior, 1.0/temp );
-			logger = spawn<Logger>( out );
-			send( chain, atom("logger"), logger );
-			send( chain, atom("run"), no_steps_between_swaps );
-			chains[i] = chain;
-		} 
-	}
-	
-void ChainController::run( const size_t total_steps ) {
-	size_t steps = (warm_up+total_steps)/no_steps_between_swaps;
-	for ( size_t i = 0; i < steps; ++i )
-		step();
-	for ( auto & id_chain : chains ) 
-		send( id_chain.second, atom("close") );
-	size_t i = 0; 
-	receive_for( i, chains.size() ) (
-		on( atom("closed") ) >> []() {}
-	);
-	send( logger, atom("close") );
-	receive(
-		on( atom("closed") ) >> []() {}
-	);
-}
-
 FPChainController::FPChainController( const likelihood_t &loglikelihood, 
 		const std::vector<std::vector<parameter_t> > &pars_v,
 		const joint_prior_t &joint_prior, size_t warm_up, size_t total_steps,
@@ -587,4 +456,31 @@ FPChainController::FPChainController( const likelihood_t &loglikelihood,
 
 		return ts_exps;
 	}
+
+ChainController::ChainController( const likelihood_t &loglikelihood, 
+		const std::vector<parameter_t> &parameters,
+		const joint_prior_t &joint_prior, size_t warm_up, size_t total_steps,
+		size_t no_chains, std::ostream &out ) 
+	: FPChainController( loglikelihood, { parameters }, joint_prior, 
+			warm_up, total_steps, out )
+{
+	n = no_chains;
+	c = 3;
+}
+
+ChainController::ChainController( const likelihood_t &loglikelihood, 
+		const std::vector<std::vector<parameter_t> > &pars_v,
+		const joint_prior_t &joint_prior, size_t warm_up, size_t total_steps,
+		size_t no_chains, std::ostream &out )  
+	: FPChainController( loglikelihood, pars_v, joint_prior, 
+			warm_up, total_steps, out )
+{
+	n = no_chains;
+	c = 3;
+}
+
+
+
 };
+
+
