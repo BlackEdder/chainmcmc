@@ -29,4 +29,33 @@
 #include "chainmcmc/chain.hh"
 #include "chainmcmc/logger.hh"
 #include "chainmcmc/prior.hh"
+/**
+ * \mainpage MCMC library for model fitting
+ *
+ * If you are looking at finding the posterior distributions for different
+ * parameter values then you should basically use the chainmcmc::ChainController class.
+ *
+ * For model comparison use the chainmcmc::FPChainController class which is slower, but
+ * can approximate the marginal likelihood of your model using the method 
+ * described in:
+ Friel, N., and A. N. Pettitt. 2008. “Marginal Likelihood Estimation via Power Posteriors.” Journal of the Royal Statistical Society: Series B (Statistical Methodology) 70 (3): 589–607. doi:10.1111/j.1467-9868.2007.00650.x.
+ *
+ * Examples are provided in the examples directory. Another good place to look
+ * is tests/test_complete.h
+ */
+
+
+/**
+ * \brief MCMC library for model fitting
+ *
+ * If you are looking at finding the posterior distributions for different
+ * parameter values then you should basically use the ChainController class.
+ *
+ * For model comparison use the FPChainController class is slower, but can 
+ * approximate the marginal likelihood of your model using the method 
+ * described in:
+ Friel, N., and A. N. Pettitt. 2008. “Marginal Likelihood Estimation via Power Posteriors.” Journal of the Royal Statistical Society: Series B (Statistical Methodology) 70 (3): 589–607. doi:10.1111/j.1467-9868.2007.00650.x.
+ */
+namespace chainmcmc {
+};
 #endif

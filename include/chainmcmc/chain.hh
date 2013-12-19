@@ -242,10 +242,15 @@ class FPChainController {
 /**
  * \brief Control the hot and cold chains
  *
- * This is a basically the same as FPChainController, but with the ability to
- * set the population (no threads) size. Unless a lot of populations are chosen
- * this should not be used to calculate the marginal likelihood of models, i.e.
- * it can be used for fitting of parameters but not for model comparisons.
+ * This is a hot-cold chain implementation of the MCMC algorithm and should be
+ * used when you want to effectively find the posterior distribution of 
+ * variables.
+ *
+ * If instead your main focus it model comparison then you should use 
+ * FPChainController, which is basically the same as this, but uses many more
+ * mcmc chains to get a good approximation of the marginal likelihood of the
+ * model.
+ *
 */
 class ChainController : public FPChainController {
 	public:
