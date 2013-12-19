@@ -68,7 +68,6 @@ joint_prior_t convert_to_joint_prior( const std::vector<double> & init ) {
 
 		pr *= pr_dir( par_alphas );
 
-
 		return pr;
 	} );
 	return jp;
@@ -168,14 +167,14 @@ int main() {
 
 	std::stringstream output;
 	auto contr = FPChainController( ll, { init_pars1 },
-			  jp1, 100000, 500000, output );
+			  jp1, 50000, 50000, output );
 	auto ts = contr.run();
 
 	double lml1 = contr.integrate( ts );
 	
 	output.clear();
 	auto contr2 = FPChainController( ll, { init_pars2 },
-			  jp2, 100000, 500000, output );
+			  jp2, 50000, 50000, output );
 	ts = contr2.run();
 
 	double lml2 = contr2.integrate( ts );
