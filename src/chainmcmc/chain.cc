@@ -270,6 +270,9 @@ void Chain::init()  {
 		on( atom("llikelih") ) >> [this]() {
 			return state.loglikelihood;
 		},
+		on( atom("lprior") ) >> [this]() {
+			return log(joint_prior(state.parameters));
+		},
 		on( atom("temp"), arg_match ) >> [this]( const double &new_temp ) {
 			//std::cout << "Got new temp: " << new_temp << std::endl;
 			temperature = new_temp;
@@ -533,48 +536,12 @@ FPChainController::FPChainController( const likelihood_t &loglikelihood,
 			for (; i < max; i+=2 ) {
 				auto chainState1 = chains[ ids[i] ];
 				auto chainState2 = chains[ ids[i+1] ];
-				//std::cout << ids[2*i] << " " << ids[2*i+1] << std::endl;
-				// Make sure we are finished running
-				std::vector<parameter_t> pars1;
-				std::vector<parameter_t> pars2;
-				send( chainState1.chain, atom("parameters") );
-				receive( 
-					on(arg_match) >> [&pars1]( const std::string &ans ) {
-						pars1 = trace::sample_from_string( ans );
-					}
-				);
-				send( chainState2.chain, atom("parameters") );
-				receive( 
-					on(arg_match) >> [&pars2]( const std::string &ans ) {
-						pars2 = trace::sample_from_string( ans );
-					}
-				);
 
-				double alpha = heated_loglikelihood( 
-						chainState2.current_t, log_likelihood )( 
-							pars1 ) + log( joint_prior( pars1 ) ) +
-						heated_loglikelihood(
-							chainState1.current_t, log_likelihood )( pars2 ) + 
-						log( joint_prior( pars2 ) ) - (
-						heated_loglikelihood( 
-							chainState1.current_t, log_likelihood )( 
-								pars1 ) + log( joint_prior( pars1 ) ) +
-						heated_loglikelihood(
-							chainState2.current_t, log_likelihood )( 
-								pars2 ) + log( joint_prior( pars2 ) )
-						);
-				alpha = exp( alpha );
-				bool accepted = false;
-				if ( alpha > 1 )
-					accepted = true;
-				else {
-					std::uniform_real_distribution<double> unif(0,1);
-					if ( unif( engine ) < alpha )
-						accepted = true;
-				}
-				if (accepted) {
+				bool accepted = temperature::accept( engine, chains[ ids[i] ], 
+					chains[ ids[i+1] ] );
+				if (accepted) 
 					temperature::swap( chains[ids[i]], chains[ids[i]] );
-				};
+
 				send( chainState1.chain, 
 						atom("run"), no_steps_between_swaps, log_on );
 				send( chainState2.chain, 

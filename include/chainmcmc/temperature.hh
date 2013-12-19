@@ -43,6 +43,9 @@ namespace chainmcmc {
 				bool operator<( const ChainState &cs ); 
 		};
 
+		bool accept( std::mt19937 &engine, const ChainState &chainState1, 
+				const ChainState &chainState2 );
+
 		void swap( ChainState & cs1, ChainState & cs2 );
 	};
 };

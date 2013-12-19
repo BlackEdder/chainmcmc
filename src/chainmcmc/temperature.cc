@@ -29,6 +29,56 @@ namespace chainmcmc {
 			return current_t < cs.current_t;
 		}
 
+		bool accept( std::mt19937 &engine, const ChainState &chainState1, 
+				const ChainState &chainState2 ) {
+			// Make sure we are finished running
+			double ll1; double ljp1;
+			send( chainState1.chain, atom("llikelih") );
+			receive( 
+				on(arg_match) >> [&ll1]( const double &ll ) {
+					ll1 = ll;
+				}
+			);
+			send( chainState1.chain, atom("lprior") );
+			receive( 
+				on(arg_match) >> [&ljp1]( const double &ljp ) {
+					ljp1 = ljp;
+				}
+			);
+
+			double ll2; double ljp2;
+			send( chainState2.chain, atom("llikelih") );
+			receive( 
+				on(arg_match) >> [&ll2]( const double &ll ) {
+					ll2 = ll;
+				}
+			);
+			send( chainState2.chain, atom("lprior") );
+			receive( 
+				on(arg_match) >> [&ljp2]( const double &ljp ) {
+					ljp2 = ljp;
+				}
+			);
+
+
+			double alpha = 
+					chainState2.current_t * ll1 + ljp1 +
+					chainState1.current_t * ll2 + ljp2 - (
+						chainState1.current_t * ll1 + ljp1 +
+						chainState2.current_t * ll2 + ljp2 
+					);
+			alpha = exp( alpha );
+			bool accepted = false;
+			if ( alpha > 1 )
+				accepted = true;
+			else {
+				std::uniform_real_distribution<double> unif(0,1);
+				if ( unif( engine ) < alpha )
+					accepted = true;
+			}
+			return accepted;
+		}
+
 		void swap( ChainState &chainState1, ChainState &chainState2 ) {
 			std::swap( chainState1.chain, chainState2.chain );
 			// Send new temp
