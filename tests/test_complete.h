@@ -119,6 +119,35 @@ class TestComplete : public CxxTest::TestSuite
 			TS_ASSERT_DELTA( means[1], 0.2, 0.05 );
 		}
 
+		double posterior_mean( const double &t, const double &m, const double &v,
+				const double &mean_y, const double &n ) {
+			return (m/v+n*t*mean_y)/(n*t+1/v);
+		}
+
+		double posterior_var( const double &t, const double &m, const double &v,
+				const double &mean_y, const double &n ) {
+			return 1.0/(n*t+1/v);
+		}
+
+
+		void power_posteriors( const FPChainController &contr, 
+				const std::vector<double> &the_data,
+				const double &m, const double &v ) {
+			// For this simple model we know what the posterior
+			// distribution should be, test if we get the same result
+			double mean_y = trace::details::mean_v( the_data );
+			for ( auto & temp_tr : contr.traces ) {
+				double mu = trace::means( temp_tr.second )[0];
+				TS_ASSERT_DELTA( mu, 
+						posterior_mean( temp_tr.first, m, v, mean_y, the_data.size() ), 
+						std::abs(mu/8.0) );
+				double var = trace::variances_sample( temp_tr.second )[0];
+				TS_ASSERT_DELTA( var,
+						posterior_var( temp_tr.first, m, v, mean_y, the_data.size() ), 
+						var/4.0 ); // Delta is quite large here. Maybe increase number of mcmc steps?
+			}
+		}
+
 		double numerical_expected( const double &t, const double &m,
 				const double &v, const likelihood_t &ll, const std::vector<double> &the_data, const joint_prior_t &joint_prior ) 
 		{
@@ -165,7 +194,7 @@ class TestComplete : public CxxTest::TestSuite
 		void testPowerPosterior() {
 			// This test uses the analytical example in Friel & Pettitt 2008
 			// to test our results
-			auto the_data = generate_fake_data( 1000, -1, 1 );
+			auto the_data = generate_fake_data( 100, -1, 1 );
 			std::vector<parameter_t> init_pars  = { 1 };
 
 			auto loglikelihood = [&the_data]( 
@@ -186,15 +215,15 @@ class TestComplete : public CxxTest::TestSuite
 
 			auto expected = analytical_expected( the_data );
 
-			double m = 0;
+			double m = 1;
 			double v = 3;
 
 			std::stringstream output;
 			std::vector<prior_t> priors = { prior::normal( m, sqrt( v ) ) };
 			auto contr = FPChainController( loglikelihood, { init_pars },
 			  priors, 100000, 100000, output );
-			std::cout << "Data " << trace::details::mean_v( the_data ) << " "
-				<< trace::details::var_v( the_data ) << " " << the_data.size() << std::endl;
+			/*std::cout << "Data " << trace::details::mean_v( the_data ) << " "
+				<< trace::details::var_v( the_data ) << " " << the_data.size() << std::endl;*/
 			auto ts = contr.run();
 			auto tr = trace::read_trace_per_sample( output );
 			// Check results
@@ -205,16 +234,16 @@ class TestComplete : public CxxTest::TestSuite
 			std::map<double, double> myts;
 			std::map<double, double> myts_numer;
 			for ( auto & temp_result : ts ) {
-				TS_ASSERT_DELTA( expected( temp_result.first, m, v ), 
-						temp_result.second, 0 );
 				myts[ temp_result.first] = expected( temp_result.first, m, v );
 				myts_numer[ temp_result.first ] = numerical_expected( temp_result.first,
 						m, v, loglikelihood, the_data, priors );
-				std::cout << temp_result.second << " " << myts[ temp_result.first ] <<
-					" " << myts_numer[ temp_result.first ] << std::endl;
+				TS_ASSERT_DELTA( myts_numer[ temp_result.first ], 
+						temp_result.second, 33 );
 			}
-			TS_ASSERT_DELTA( contr.integrate( myts ), 
+			TS_ASSERT_DELTA( contr.integrate( myts_numer ), 
 					contr.integrate( ts ), 0.05 );
+
+			power_posteriors( contr, the_data, m, v );
 		}
 };
 
