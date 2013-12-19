@@ -36,85 +36,6 @@ double dnorm( double x, double mu, double sigma, bool log_v = false ) {
 		return exp(lp);
 }
 
-double accept_prob( const std::vector<parameter_t> &new_pars,
-		const std::vector<parameter_t> &old_pars, const likelihood_t &ll, 
-		const std::vector<prior_t> &priors ) {
-	double alpha = exp( step::mh_log_weight( ll, new_pars, priors, 1 ) -
-			step::mh_log_weight( ll, old_pars, priors, 1 ) );
-	//std::cout << alpha << std::endl;
-	alpha = std::min( 1.0, alpha );
-	//std::cout << "BLA: " << alpha << std::endl;
-	return alpha;
-}
-
-double log_marginal_likelihood( std::mt19937 &eng, const likelihood_t &ll, 
-		const std::vector<parameter_t> &init_pars, const 
-		std::vector<prior_t> &priors ) {
-	double c = 5; double n = 20;
-	std::vector<double> ts;
-	for (size_t i = 0; i <= n; ++i)
-		ts.push_back( pow(((double) i)/n, c ) );
-
-	double exp_ll = 0;
-	double sum_ll = 0;
-
-	double old_ti = 0;
-
-	for ( auto & ti : ts ) {
-
-		likelihood_t hot = [&ll, &ti]( const std::vector<parameter_t> &pars ) {
-			if (ti == 0)
-				return 0.0;
-			else {
-				return ti*ll(pars);
-			}
-		};
-		auto chain = spawn<Chain>( eng, hot, init_pars, priors );
-
-		std::stringstream out;
-		auto logger = spawn<Logger>( out );
-		send( chain, atom("logger"), logger );
-
-		send( chain, atom("run"), 1000000, false );
-		send( chain, atom("no_adapt") );
-		send( chain, atom("run"), 1000000, true );
-		send( chain, atom("log_weight") );
-		receive( 
-				on( arg_match ) >> [&out, &ti]( const double &lw ) {
-				//std::cout << out.str() << std::endl;
-				std::cout << ti << std::endl;
-				std::cout << "Weight: " << exp( lw ) << std::endl; } );
-
-		auto tr = trace::read_trace_per_sample( out );
-		std::cout << "Prior init: " << joint_prior_t( priors )( init_pars ) << " "
-			<< priors[0]( init_pars[0] ) << " " 
-			<< priors[1]( init_pars[1] ) << " " 
-			<< priors[2]( init_pars[2] ) << " " 
-			<<std::endl;
-
-		std::cout << tr.back() << std::endl;
-		std::cout << "Prior: " << joint_prior_t( priors )( tr.back() ) << " "
-			<< priors[0]( tr.back()[0] ) << " " 
-			<< priors[1]( tr.back()[1] ) << " " 
-			<< priors[2]( tr.back()[2] ) << " " 
-			<<std::endl;
-
-		double mean_ll = 0;
-		for ( auto & sample : tr )
-			mean_ll += ll( sample );
-		mean_ll /= tr.size();
-		std::cout << "Mean ll " << mean_ll << std::endl;
-
-		if ( ti != 0 ) {
-			sum_ll += (ti-old_ti)*(mean_ll+exp_ll)/2.0;
-		}
-		std::cout << "Sum ll " << sum_ll << std::endl;
-		exp_ll = mean_ll;
-		old_ti = ti;
-	}
-
-	return sum_ll;
-}
 /**
  * Goal is to implement 
  *
@@ -154,10 +75,7 @@ int main() {
 	std::vector<parameter_t> init_pars1 = { 3000, 185, pow(300,2) };
 	std::vector<prior_t> priors1 = { prior::normal( 3000, 1e6 ),
 		prior::normal( 185, 1e4 ), prior::inverse_gamma( 3.0, (2*pow(300,2)) ) };
-	std::cout << "Prior init: " << joint_prior_t( priors1 )( init_pars1 ) << std::endl;
 
-	/*double lml1 = log_marginal_likelihood( eng, ll1, init_pars1, priors1 );
-	double lml2 = log_marginal_likelihood( eng, ll2, init_pars1, priors1 );*/
 	std::stringstream output;
 	auto contr = FPChainController( ll1, { init_pars1 },
 			  priors1, 100000, 500000, output );
@@ -171,13 +89,10 @@ int main() {
 	ts = contr2.run();
 
 	double lml2 = contr2.integrate( ts );
+	
+	std::cout << "Marginal likelihood model 1: " << exp( lml1 ) << std::endl;
+	std::cout << "Marginal likelihood model 2: " << exp( lml2 ) << std::endl;
 
-
-	std::cout << lml1 << std::endl;
-	std::cout << lml2 << std::endl;
-	std::cout << lml2-lml1 << " " << lml1-lml2 << std::endl;
-	std::cout << exp(lml2-lml1) << " " << exp(lml1-lml2) << std::endl;
-	std::cout << exp(lml2)/exp(lml1) << " " << exp(lml1)/exp(lml2) << std::endl;
 
 	return 0;
 }

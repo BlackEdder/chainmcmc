@@ -94,129 +94,6 @@ double dmixture( const double &v, const std::vector<parameter_t> &pars ) {
 	return sum;
 }
 
-void plot_results( const std::vector<parameter_t> &pars ) {
-	realtimeplot::PlotConfig conf;
-	conf.fixed_plot_area = true;
-	conf.min_x = 0;
-	conf.max_x = 40000;
-	conf.max_y = 2e-4;
-	conf.aspect_ratio = 2.5;
-	realtimeplot::Plot pl = realtimeplot::Plot(conf);
-	for ( size_t i = 0; i < 40000; i += 100 ) {
-		pl.line_add( i, dmixture( i, pars ) );
-	}
-}
-
-double accept_prob( const std::vector<parameter_t> &new_pars,
-		const std::vector<parameter_t> &old_pars, const likelihood_t &ll, 
-		const joint_prior_t &jp ) {
-	double alpha = exp( step::mh_log_weight( ll, new_pars, jp, 1 ) -
-			step::mh_log_weight( ll, old_pars, jp, 1 ) );
-	//std::cout << alpha << std::endl;
-	alpha = std::min( 1.0, alpha );
-	//std::cout << "BLA: " << alpha << std::endl;
-	return alpha;
-}
-
-double log_marginal_likelihood_vit( const likelihood_t &ll, 
-		const joint_prior_t &jp, 
-		const std::vector<std::vector<parameter_t> > &tr ) {
-	std::mt19937 eng;
-	auto theta_star = trace::means( tr );
-	auto theta_var = trace::variances_sample( tr );
-	size_t no_samples = 2000;
-	double numer = 0;
-	double denom = 0;
-	std::cout << "Star: " << theta_star << std::endl;
-	std::cout << "Var:  " << theta_var << std::endl;
-	for (size_t i = 0; i < theta_star.size(); ++i) {
-		theta_star[i] -= sqrt(theta_var[i]);
-	}
-	std::cout << "Star: " << theta_star << std::endl;
-
-	for (size_t i = 0; i < no_samples; ++i) {
-		double prod_numer = 1;
-		double prod_denom = 1;
-		for (size_t j = 0; j < theta_star.size(); ++j) {
-			auto theta_g = theta_star;
-			theta_g[j] = tr[ tr.size()-1-i ][j];
-			prod_numer *= prior::normal(theta_star[j], (theta_var[j]))(theta_g[j]);
-			prod_numer *= accept_prob( theta_star, theta_g, ll, jp );
-			double sum_denom = 0;
-			for (size_t m = 0; m < 100; ++m) {
-				auto theta_g = theta_star;
-				std::normal_distribution<double> rnorm( 0, sqrt(theta_var[j]) );
-				theta_g[j] += rnorm( eng );
-				sum_denom += accept_prob( theta_g, theta_star, ll, jp );
-			}
-			prod_denom *= sum_denom/1000.0;
-		}
-		numer += prod_numer;
-		denom += prod_denom;
-	}
-	std::cout << numer << " / " << denom << std::endl;
-	return step::mh_log_weight( ll, theta_star, jp, 1 )-log(1.0/no_samples*numer/denom);
-}
-
-double log_marginal_likelihood( std::mt19937 &eng, const likelihood_t &ll, 
-		const std::vector<parameter_t> &init_pars, const 
-		joint_prior_t &jp ) {
-	std::vector<double> as = { 0,0.001, 0.01, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 
-		0.8, 0.9,	1.0 };
-
-	double exp_ll = 0;
-	double sum_ll = 0;
-
-	for ( size_t i = 0; i < as.size(); ++i ) {
-		double ti = pow(as[i],5);
-		likelihood_t hot = [&ll, &ti]( const std::vector<parameter_t> &pars ) {
-			if (ti == 0)
-				return 0.0;
-			else {
-				return ti*ll(pars);
-			}
-		};
-		auto chain = spawn<Chain>( eng, hot, init_pars, jp );
-
-		std::stringstream out;
-		auto logger = spawn<Logger>( out );
-		send( chain, atom("logger"), logger );
-
-		send( chain, atom("run"), 100000, false );
-		send( chain, atom("no_adapt") );
-		send( chain, atom("run"), 100000, true );
-		send( chain, atom("log_weight") );
-		receive( 
-				on( arg_match ) >> [&out, &ti]( const double &lw ) {
-				//std::cout << out.str() << std::endl;
-				std::cout << ti << std::endl;
-				std::cout << "Weight: " << exp( lw ) << std::endl; } );
-
-		auto tr = trace::read_trace_per_sample( out );
-
-		double mean_ll = 0;
-		size_t dim = tr.size();
-		for ( auto & sample : tr ) {
-			auto l = ll( sample );
-			if (std::isfinite(l))
-				mean_ll += l;
-			else
-				--dim;
-		}
-		mean_ll /= dim;
-		if (!std::isfinite( mean_ll))
-			mean_ll = (-std::numeric_limits<double>::max())/100.0;
-		std::cout << "Mean ll " << mean_ll << std::endl;
-
-		if ( i != 0 ) {
-			sum_ll += (pow(as[i],5)-pow(as[i-1],5))*(mean_ll+exp_ll)/2.0;
-		}
-		exp_ll = mean_ll;
-	}
-
-	return sum_ll;
-}
-
 int main() {
 	// Data
 	std::vector<double> velocities = { 
@@ -289,58 +166,22 @@ int main() {
 
 	std::mt19937 eng;
 
-	std::cout << "Friel:" << std::endl;
-	auto ml1 = log_marginal_likelihood( eng, ll, init_pars1, jp1 );
-	auto ml2 = log_marginal_likelihood( eng, ll, init_pars2, jp2 );
-	std::cout << ml1 << std::endl;
-	std::cout << ml2 << std::endl;;
-	std::cout << ml2-ml1 << " " << ml1-ml2 << std::endl;
-	std::cout << exp(ml2-ml1) << " " << exp(ml1-ml2) << std::endl;
-	std::cout << "End Friel:" << std::endl;
+	std::stringstream output;
+	auto contr = FPChainController( ll, { init_pars1 },
+			  jp1, 100000, 500000, output );
+	auto ts = contr.run();
 
+	double lml1 = contr.integrate( ts );
+	
+	output.clear();
+	auto contr2 = FPChainController( ll, { init_pars2 },
+			  jp2, 100000, 500000, output );
+	ts = contr2.run();
 
+	double lml2 = contr2.integrate( ts );
 
-	std::stringstream out;
-	auto chainC = ChainController( ll, init_pars1, jp1, 100000, 300000, 8, out );
-
-	auto tr1 = trace::read_trace_per_sample( out );
-	auto means1 = trace::means( tr1 );
-	std::cout << std::endl << std::endl << step::mh_log_weight( ll, means1, jp1, 1 ) << 
-		std::endl << ll(means1) << ": " << means1 << std::endl;
-	plot_results( means1 );
-	auto s_vars = trace::variances_sample( tr1 );
-	std::transform( s_vars.begin(), s_vars.end(), s_vars.begin(),
-			[]( const double &el ) {
-			return sqrt(el); } );
-	std::cout << s_vars << std::endl;
-	std::cout << std::endl << std::endl;
-
-	out.clear();
-	chainC = ChainController( ll, init_pars2, jp2, 100000, 300000, 8, out );
-
-	auto tr2 = trace::read_trace_per_sample( out );
-	auto means2 = trace::means( tr2 );
-	std::cout << std::endl << std::endl << step::mh_log_weight( ll, means2, jp2, 1 ) << 
-		std::endl << ll(means2) << ": " << means2 << std::endl;
-	plot_results( means2 );
-	s_vars = trace::variances_sample( tr2 );
-	std::transform( s_vars.begin(), s_vars.end(), s_vars.begin(),
-			[]( const double &el ) {
-			return sqrt(el); } );
-	std::cout << s_vars << std::endl;
-
-
-	ml1 = log_marginal_likelihood_vit( ll, jp1, tr1 );
-	ml2 = log_marginal_likelihood_vit( ll, jp2, tr2 );
-
-	std::cout << ml1 << std::endl;
-	std::cout << ml2 << std::endl;;
-	std::cout << ml2-ml1 << " " << ml1-ml2 << std::endl;
-	std::cout << exp((ml1+1-ml2)/2) << " " << exp(-ml2) << std::endl;
-
-
-
-
+	std::cout << "Marginal likelihood model 1: " << exp( lml1 ) << std::endl;
+	std::cout << "Marginal likelihood model 2: " << exp( lml2 ) << std::endl;
 
 	return 0;
 }
