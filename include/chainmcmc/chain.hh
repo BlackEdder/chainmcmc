@@ -210,6 +210,16 @@ class FPChainController {
 		double integrate( const std::map<double, double>& es );
 		std::map<double, std::vector<trace::sample_t> > traces;
 
+		/**
+		 * \brief Return the log marginal likelihood of the model
+		 *
+		 * Alias of integrate
+		 *
+		 * \param estimated_lls are the estimate log likelihood returned by run()
+		 */
+		double log_marginal_likelihood( 
+				const std::map<double, double>& estimated_lls );
+
 	protected:
 		//! Number of populations (see Friel and Pettitt 2008)
 		size_t n = 50;

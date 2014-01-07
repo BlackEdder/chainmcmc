@@ -456,6 +456,11 @@ FPChainController::FPChainController( const likelihood_t &loglikelihood,
 		return ts_exps;
 	}
 
+	double FPChainController::log_marginal_likelihood( 
+			const std::map<double, double>& es ) {
+		return integrate( es );
+	}
+
 ChainController::ChainController( const likelihood_t &loglikelihood, 
 		const std::vector<parameter_t> &parameters,
 		const joint_prior_t &joint_prior, size_t warm_up, size_t total_steps,
