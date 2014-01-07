@@ -332,7 +332,7 @@ FPChainController::FPChainController( const likelihood_t &loglikelihood,
 		std::ostream &out ) : 
 			warm_up( warm_up ), total_steps( total_steps ),
 			log_likelihood( loglikelihood ), joint_prior( joint_prior ), out( out ) {
-		setup( loglikelihood, pars_v, joint_prior );
+		setup( loglikelihood, pars_v, joint_prior, out );
 	}
 
 	likelihood_t FPChainController::heated_loglikelihood( 
@@ -346,7 +346,7 @@ FPChainController::FPChainController( const likelihood_t &loglikelihood,
 
 	void FPChainController::setup( const likelihood_t &loglikelihood, 
 			const std::vector<std::vector<parameter_t> > &pars_v,
-			const joint_prior_t &joint_prior ) {
+			const joint_prior_t &joint_prior, std::ostream &out ) {
 		for (size_t i = 0; i < n; ++i) {
 			std::mt19937 eng;
 			eng.seed( engine() );
@@ -357,7 +357,10 @@ FPChainController::FPChainController( const likelihood_t &loglikelihood,
 			state.current_t = temp;
 			state.chain = spawn<Chain>( eng, 
 					loglikelihood, pars_v[i%pars_v.size()], joint_prior, temp );
-			state.logger = spawn<TraceLogger>( traces[temp] );
+			if (temp != 1)
+				state.logger = spawn<TraceLogger>( traces[temp] );
+			else
+				state.logger = spawn<TraceLogger>( traces[temp], true, out );
 
 			send( state.chain, atom("logger"), state.logger );
 		  chains[i] = state;
@@ -449,10 +452,6 @@ FPChainController::FPChainController( const likelihood_t &loglikelihood,
 				on( atom("closed") ) >> []() {}
 			);
 		}
-
-		// Copy traces[1] into out
-		for ( auto & sample : traces[1] )
-		 	out << sample << std::endl;
 
 		return ts_exps;
 	}

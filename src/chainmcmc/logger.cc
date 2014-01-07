@@ -40,13 +40,23 @@ void Logger::init() {
 	);
 };
 
-TraceLogger::TraceLogger( std::vector<trace::sample_t> & tr ) : 
-	the_trace( tr ) {};
+TraceLogger::TraceLogger( std::vector<trace::sample_t> & tr,
+		std::ostream & out ) : 
+	the_trace( tr ), out( out ), log_to_stream( false ) {};
+
+TraceLogger::TraceLogger( std::vector<trace::sample_t> & tr, bool log_to_stream,
+		std::ostream &out ) :
+	the_trace( tr ), out( out ), log_to_stream( log_to_stream ) {};
+
 
 void TraceLogger::init() {
 	become(
 		on(atom("append"), arg_match ) >> [this]( const 
 			std::string &str ) {
+			if (log_to_stream) {
+				out << str;
+				out << std::endl;
+			}
 			trace::sample_t sample = trace::sample_from_string( str );
 			the_trace.push_back( sample );
 		},

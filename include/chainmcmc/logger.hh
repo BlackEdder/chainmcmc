@@ -22,7 +22,7 @@
 */
 #ifndef LOGGER_HH 
 #define LOGGER_HH
-
+#include<fstream>
 #include <cppa/cppa.hpp>
 
 #include "chainmcmc/trace.hh"
@@ -41,11 +41,23 @@ namespace chainmcmc {
 
 	class TraceLogger : public event_based_actor {
 		public:
-			TraceLogger( std::vector<trace::sample_t> & tr );
+			/**
+			 * \brief Log to trace
+			 */
+			TraceLogger( std::vector<trace::sample_t> & tr,
+					std::ostream &out = std::cout );
+
+			/**
+			 * \brief Log to trace and also to a stream
+			 */
+			TraceLogger( std::vector<trace::sample_t> & tr, bool log_to_stream,
+					std::ostream &out = std::cout );
 
 			void init();
 		protected:
 			std::vector<trace::sample_t> & the_trace;
+			std::ostream & out;
+			bool log_to_stream = false;
 
 			double sum_ll = 0;
 			size_t count_ll = 0;

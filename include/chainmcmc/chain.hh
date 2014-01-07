@@ -235,7 +235,7 @@ class FPChainController {
 
 		void setup( const likelihood_t &loglikelihood, 
 				const std::vector<std::vector<parameter_t> > &pars_v,
-				const joint_prior_t &joint_prior );
+				const joint_prior_t &joint_prior, std::ostream &out );
 
 };
 
