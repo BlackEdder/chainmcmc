@@ -33,7 +33,6 @@ add_custom_target( examples
 
 
 #Install the library
-SET (CMAKE_INSTALL_PREFIX /usr)
 install (TARGETS chainmcmc DESTINATION lib)
 install (FILES include/chainmcmc/chainmcmc.hh
 	include/chainmcmc/chain.hh
