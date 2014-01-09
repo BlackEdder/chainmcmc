@@ -13,6 +13,7 @@ Feel free to contact me if you have any questions regarding the library.
 ## Installation
 
 The library uses cmake as its build system and can be installed via:
+
     cmake .
     make
     sudo make install
