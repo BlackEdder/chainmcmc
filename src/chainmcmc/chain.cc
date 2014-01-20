@@ -402,27 +402,17 @@ FPChainController::FPChainController( const likelihood_t &loglikelihood,
 					send( id_chain_state.second.chain, atom("no_adapt") );
 			}
 
-			// Try switching chains. Here we 10 times choose two chains/populations 
-			// and try to switch those
-			fisherYatesKSubsets( ids, ids.size(), engine );
-			size_t i = 0;
-			size_t max = std::min( (size_t) 20, chains.size()-1 );
-			for (; i < max; i+=2 ) {
-				auto chainState1 = chains[ ids[i] ];
-				auto chainState2 = chains[ ids[i+1] ];
-
-				bool accepted = temperature::accept( engine, chains[ ids[i] ], 
-					chains[ ids[i+1] ] );
-				if (accepted) 
-					temperature::swap( chains[ids[i]], chains[ids[i]] );
-
-				send( chainState1.chain, 
-						atom("run"), no_steps_between_swaps, log_on );
-				send( chainState2.chain, 
-						atom("run"), no_steps_between_swaps, log_on );
-			}
-			for (; i < chains.size(); ++i ) {
-				send( chains[ ids[i] ].chain, 
+			// Try switching chains. For each chain there is a 0.1 
+			// chance of switching with neighbour
+			std::uniform_real_distribution<double> unif(0,1);
+			for (size_t i = 0; i < chains.size(); ++i ) {
+				if ( i < chains.size() - 1 && unif( engine ) < 0.1 ) {
+					bool accepted = temperature::accept( engine, chains[ i ], 
+							chains[ i+1 ] );
+					if (accepted) 
+						temperature::swap( chains[i], chains[i+1] );
+				}
+				send( chains[ i ].chain, 
 						atom("run"), no_steps_between_swaps, log_on );
 			}
 			
