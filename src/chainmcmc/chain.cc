@@ -138,7 +138,7 @@ namespace step {
 
 	ParameterState adapt_parameter_sd( ParameterState && ps ) {
 		ps.sd = adapt_step_size( ps.sd, ps.no_tries, ps.no_accepts,
-				100, 0.20, 0.25, 1 );
+				100, 0.25, 0.35, 1 );
 		return ps;
 	}
 
@@ -397,9 +397,9 @@ FPChainController::FPChainController( const likelihood_t &loglikelihood,
 			// Log to trace logger if > warm_up
 			if (generation>warm_up && !log_on) {
 				log_on = true;
-				/*for ( auto & id_chain_state : chains ) 
+				for ( auto & id_chain_state : chains ) 
 					// No more adaptation of step size
-					send( id_chain_state.second.chain, atom("no_adapt") );*/
+					send( id_chain_state.second.chain, atom("no_adapt") );
 			}
 
 			// Try switching chains. Here we 10 times choose two chains/populations 

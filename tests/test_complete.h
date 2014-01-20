@@ -141,11 +141,11 @@ class TestComplete : public CxxTest::TestSuite
 				double mu = trace::means( temp_tr.second )[0];
 				TS_ASSERT_DELTA( mu, 
 						posterior_mean( temp_tr.first, m, v, mean_y, the_data.size() ), 
-						std::abs(mu/5.0) );
+						std::abs(mu/10.0) );
 				double var = trace::variances_sample( temp_tr.second )[0];
 				TS_ASSERT_DELTA( var,
 						posterior_var( temp_tr.first, m, v, mean_y, the_data.size() ), 
-						var/4.0 ); // Delta is quite large here. Maybe increase number of mcmc steps?
+						var/10.0 ); // Delta is quite large here. Maybe increase number of mcmc steps?
 			}
 		}
 
@@ -210,7 +210,7 @@ class TestComplete : public CxxTest::TestSuite
 			for ( auto & temp_result : ts ) {
 				myts[ temp_result.first] = expected( temp_result.first, m, v );
 				TS_ASSERT_DELTA( myts[ temp_result.first ], 
-						temp_result.second, 36 );
+						temp_result.second, 25 );
 			}
 			TS_ASSERT_DELTA( contr.integrate( myts ), 
 					contr.integrate( ts ), 0.05 );
