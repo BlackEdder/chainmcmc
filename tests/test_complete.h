@@ -213,7 +213,7 @@ class TestComplete : public CxxTest::TestSuite
 						temp_result.second, 25 );
 			}
 			TS_ASSERT_DELTA( contr.integrate( myts ), 
-					contr.integrate( ts ), 0.05 );
+					contr.integrate( ts ), 0.001 );
 
 			power_posteriors( contr, the_data, m, v );
 		}
