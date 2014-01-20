@@ -237,11 +237,6 @@ class FPChainController {
 		joint_prior_t joint_prior;
 
 		std::ostream &out;
-		/**
-		 * \brief Heat the log likelihood by certain temperature
-		 */
-		likelihood_t	heated_loglikelihood( const double &temp,
-				const likelihood_t &loglikelihood );
 
 		void setup( const likelihood_t &loglikelihood, 
 				const std::vector<std::vector<parameter_t> > &pars_v,

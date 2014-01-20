@@ -335,15 +335,6 @@ FPChainController::FPChainController( const likelihood_t &loglikelihood,
 		setup( loglikelihood, pars_v, joint_prior, out );
 	}
 
-	likelihood_t FPChainController::heated_loglikelihood( 
-			const double &temp, const likelihood_t &loglikelihood ) {
-		return [temp, loglikelihood]( const trace::sample_t &pars ) {
-			if (temp == 0)
-				return 0.0;
-			return temp*loglikelihood( pars );
-		};
-	}
-
 	void FPChainController::setup( const likelihood_t &loglikelihood, 
 			const std::vector<std::vector<parameter_t> > &pars_v,
 			const joint_prior_t &joint_prior, std::ostream &out ) {
