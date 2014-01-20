@@ -141,7 +141,7 @@ class TestComplete : public CxxTest::TestSuite
 				double mu = trace::means( temp_tr.second )[0];
 				TS_ASSERT_DELTA( mu, 
 						posterior_mean( temp_tr.first, m, v, mean_y, the_data.size() ), 
-						std::abs(mu/5.0) );
+						std::abs(mu/2.0) );
 				double var = trace::variances_sample( temp_tr.second )[0];
 				TS_ASSERT_DELTA( var,
 						posterior_var( temp_tr.first, m, v, mean_y, the_data.size() ), 
@@ -213,7 +213,7 @@ class TestComplete : public CxxTest::TestSuite
 						temp_result.second, 25 );
 			}
 			TS_ASSERT_DELTA( contr.integrate( myts ), 
-					contr.integrate( ts ), 0.001 );
+					contr.integrate( ts ), 0.003 );
 
 			power_posteriors( contr, the_data, m, v );
 		}

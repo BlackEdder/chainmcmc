@@ -397,16 +397,16 @@ FPChainController::FPChainController( const likelihood_t &loglikelihood,
 			// Log to trace logger if > warm_up
 			if (generation>warm_up && !log_on) {
 				log_on = true;
-				for ( auto & id_chain_state : chains ) 
+				/*for ( auto & id_chain_state : chains ) 
 					// No more adaptation of step size
-					send( id_chain_state.second.chain, atom("no_adapt") );
+					send( id_chain_state.second.chain, atom("no_adapt") );*/
 			}
 
 			// Try switching chains. For each chain there is a 0.1 
 			// chance of switching with neighbour
 			std::uniform_real_distribution<double> unif(0,1);
 			for (size_t i = 0; i < chains.size(); ++i ) {
-				if ( i < chains.size() - 1 && unif( engine ) < 0.1 ) {
+				if ( i < chains.size() - 1 && unif( engine ) < 0.10 ) {
 					bool accepted = temperature::accept( engine, chains[ i ], 
 							chains[ i+1 ] );
 					if (accepted) 
