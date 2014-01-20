@@ -141,34 +141,12 @@ class TestComplete : public CxxTest::TestSuite
 				double mu = trace::means( temp_tr.second )[0];
 				TS_ASSERT_DELTA( mu, 
 						posterior_mean( temp_tr.first, m, v, mean_y, the_data.size() ), 
-						std::abs(mu/8.0) );
+						std::abs(mu/5.0) );
 				double var = trace::variances_sample( temp_tr.second )[0];
 				TS_ASSERT_DELTA( var,
 						posterior_var( temp_tr.first, m, v, mean_y, the_data.size() ), 
 						var/4.0 ); // Delta is quite large here. Maybe increase number of mcmc steps?
 			}
-		}
-
-		double numerical_expected( const double &t, const double &m,
-				const double &v, const likelihood_t &ll, const std::vector<double> &the_data, const joint_prior_t &joint_prior ) 
-		{
-			std::vector<double> lls;
-			// Calculate mean and var
-			double mean_y = trace::details::mean_v( the_data );
-			double denom = the_data.size()*t+1/v;
-			double mu = (the_data.size()*t*mean_y+m/v)/denom;
-			double sd = sqrt(1.0/denom);
-			std::normal_distribution<double> rnorm( mu, sd );
-			for (size_t i = 0; i < 1000; ++i) {
-				// Generate fake parameter values
-				double par = rnorm( eng );
-				// Calculate ll for each
-				lls.push_back( //log(joint_prior( {par} )) + 
-						ll( { par } ) );
-			}
-			
-			// Return mean
-			return trace::details::mean_v( lls );
 		}
 
 		std::function<double( const double &, const double &, const double & )>
@@ -177,17 +155,13 @@ class TestComplete : public CxxTest::TestSuite
 			double mean_y = trace::details::mean_v( the_data );
 			double n = the_data.size();
 			double independent = -(n/2*log(2*pi));
-			for ( auto & y : the_data ) {
-				independent -= 0.5 * pow(y-mean_y,2);
-			}
 			return [mean_y, independent, n, pi, the_data]( const double &t, const double &m,
 					const double &v ) {
 				/*return independent - (n/2.0)*(pow(m-mean_y,2)/(pow(v*m*t+1,2))) -
 					(n/2.0)*(1.0/(n*t+1/v));*/
-				double sum = -n/(2*(n*t+1/v))-n/2*log(2*pi);
-				double bla = (m/v+n*t*mean_y)/(n*t+1/v);
+				double sum = independent;
 				for ( auto & y : the_data )
-					sum -= 1/2*pow(bla-y,2);
+					sum -= 1/2.0*(pow(mean_y*t*n+m/v,2)/pow(t*n+1/v,2)+1/(t*n+1/v)-(2*y*(mean_y*t*n+m/v))/(t*n+1/v)+pow(y,2));
 				return sum; 
 			};
 		}
@@ -233,15 +207,12 @@ class TestComplete : public CxxTest::TestSuite
 
 			TS_ASSERT_EQUALS( ts.size(), 50 );
 			std::map<double, double> myts;
-			std::map<double, double> myts_numer;
 			for ( auto & temp_result : ts ) {
 				myts[ temp_result.first] = expected( temp_result.first, m, v );
-				myts_numer[ temp_result.first ] = numerical_expected( temp_result.first,
-						m, v, loglikelihood, the_data, priors );
-				TS_ASSERT_DELTA( myts_numer[ temp_result.first ], 
-						temp_result.second, 33 );
+				TS_ASSERT_DELTA( myts[ temp_result.first ], 
+						temp_result.second, 36 );
 			}
-			TS_ASSERT_DELTA( contr.integrate( myts_numer ), 
+			TS_ASSERT_DELTA( contr.integrate( myts ), 
 					contr.integrate( ts ), 0.05 );
 
 			power_posteriors( contr, the_data, m, v );
