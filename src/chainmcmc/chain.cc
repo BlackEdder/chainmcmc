@@ -23,6 +23,8 @@
 
 #include "chainmcmc/chain.hh"
 
+#include<iomanip>
+
 namespace chainmcmc {
 
 /**
@@ -316,7 +318,8 @@ void Chain::step()  {
 			", " << state.current_parameter << ": ";*/
 		for ( auto & par : state.parameters ) {
 			if (first) {
-				s << par;
+				s << std::setprecision( std::numeric_limits<double>::digits10+2 ) << par;
+				//s << par;
 				first = false;
 			} else
 				s	<< "\t" << par;
