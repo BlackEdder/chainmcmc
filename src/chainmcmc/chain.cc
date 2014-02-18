@@ -332,6 +332,7 @@ FPChainController::FPChainController( const likelihood_t &loglikelihood,
 		std::ostream &out ) : 
 			warm_up( warm_up ), total_steps( total_steps ),
 			log_likelihood( loglikelihood ), joint_prior( joint_prior ), out( out ) {
+		engine.seed( time(0) );
 		setup( loglikelihood, pars_v, joint_prior, out );
 	}
 
