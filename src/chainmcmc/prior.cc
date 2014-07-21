@@ -21,6 +21,8 @@
   -------------------------------------------------------------------
 */
 
+#include<cassert>
+
 #include "chainmcmc/prior.hh"
 
 #include <boost/math/distributions/inverse_gamma.hpp>
@@ -38,6 +40,7 @@ namespace chainmcmc {
 	joint_prior_t::joint_prior_t( const std::vector<prior_t> &priors )
 	{
 		joint_func =  [&priors]( const std::vector<parameter_t> &pars ) {
+			assert( pars.size() <= priors.size() );
 			double prob = 1;
 			for ( size_t i = 0; i < pars.size(); ++i ) {
 				double pr = priors[i](pars[i]);
@@ -52,6 +55,8 @@ namespace chainmcmc {
 
 	joint_prior_t::joint_prior_t( const std::initializer_list<prior_t> &args ) {
 		joint_func =  [&args]( const std::vector<parameter_t> &pars ) {
+			assert( pars.size() <= args.size() );
+
 			double prob = 1;
 			auto it = args.begin();
 			for ( size_t i = 0; i < pars.size(); ++i ) {
