@@ -95,8 +95,8 @@ namespace chainmcmc {
 		}
 
 		prior_t uniform( const double &min, const double &max ) {
-			static double prob = 1.0/(max-min); // No need to calculate everytime
-			return [min, max]( const double &x ) {
+			double prob = 1.0/(max-min); // No need to calculate everytime
+			return [min, max, prob]( const double &x ) {
 				if (x>=min && x<=max)
 					return prob;
 				else
